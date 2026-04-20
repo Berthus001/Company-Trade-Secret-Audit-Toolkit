@@ -1,0 +1,22 @@
+/**
+ * Recommendation Routes
+ * Handles recommendation generation based on scores
+ */
+
+const express = require('express');
+const router = express.Router();
+const { protect } = require('../middleware/authMiddleware');
+const {
+  getRecommendations,
+  getActionableRecommendations,
+  getRecommendationRules
+} = require('../controllers/recommendationController');
+
+// Public route for rules documentation
+router.get('/rules', getRecommendationRules);
+
+// Protected routes
+router.post('/', protect, getRecommendations);
+router.post('/actionable', protect, getActionableRecommendations);
+
+module.exports = router;

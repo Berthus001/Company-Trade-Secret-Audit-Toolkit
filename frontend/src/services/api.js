@@ -45,6 +45,32 @@ const api = {
     return response.data.data;
   },
 
+  createAdmin: async (userData) => {
+    const response = await axiosInstance.post('/auth/users/create-admin', userData);
+    return response.data.data;
+  },
+
+  createUser: async (userData) => {
+    const response = await axiosInstance.post('/auth/users/create-user', userData);
+    return response.data.data;
+  },
+
+  getUsers: async (role) => {
+    const params = role ? { role } : {};
+    const response = await axiosInstance.get('/auth/users', { params });
+    return response.data;
+  },
+
+  updateUser: async (id, userData) => {
+    const response = await axiosInstance.put(`/auth/users/${id}`, userData);
+    return response.data.data;
+  },
+
+  deleteUser: async (id) => {
+    const response = await axiosInstance.delete(`/auth/users/${id}`);
+    return response.data;
+  },
+
   // ==================
   // Questions endpoints
   // ==================
@@ -89,11 +115,14 @@ const api = {
   },
 
   // ==================
-  // Recommendations endpoints
+  // AI Recommendations endpoint
   // ==================
   
-  getRecommendations: async (categoryScores) => {
-    const response = await axiosInstance.post('/recommendations', { categoryScores });
+  getAIRecommendations: async (categoryScores, weakCategories) => {
+    const response = await axiosInstance.post('/audits/recommendations', {
+      categoryScores,
+      weakCategories
+    });
     return response.data.data;
   }
 };

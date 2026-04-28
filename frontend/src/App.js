@@ -8,11 +8,12 @@ import { useAuth } from './context/AuthContext';
 
 // Pages
 import Login from './pages/Login';
-import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import AuditForm from './pages/AuditForm';
 import AuditResults from './pages/AuditResults';
 import AuditHistory from './pages/AuditHistory';
+import ManageUsers from './pages/ManageUsers';
+import ManageAdmins from './pages/ManageAdmins';
 
 // Components
 import Navbar from './components/Navbar';
@@ -20,7 +21,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Loading from './components/Loading';
 
 function App() {
-  const { loading } = useAuth();
+  const { loading, isSuperadmin } = useAuth();
 
   if (loading) {
     return <Loading />;
@@ -33,14 +34,20 @@ function App() {
         <Routes>
           {/* Public Routes */}
           <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+          
+          {/* Redirect register attempts to login */}
+          <Route path="/register" element={<Navigate to="/login" replace />} />
 
-          {/* Protected Routes */}
+          {/* Protected Routes - Redirect superadmins to admin panel */}
           <Route
             path="/dashboard"
             element={
               <ProtectedRoute>
-                <Dashboard />
+                {isSuperadmin ? (
+                  <Navigate to="/admin/users" replace />
+                ) : (
+                  <Dashboard />
+                )}
               </ProtectedRoute>
             }
           />
@@ -48,7 +55,11 @@ function App() {
             path="/audit/new"
             element={
               <ProtectedRoute>
-                <AuditForm />
+                {isSuperadmin ? (
+                  <Navigate to="/admin/users" replace />
+                ) : (
+                  <AuditForm />
+                )}
               </ProtectedRoute>
             }
           />
@@ -56,7 +67,11 @@ function App() {
             path="/audit/:id"
             element={
               <ProtectedRoute>
-                <AuditResults />
+                {isSuperadmin ? (
+                  <Navigate to="/admin/users" replace />
+                ) : (
+                  <AuditResults />
+                )}
               </ProtectedRoute>
             }
           />
@@ -64,14 +79,54 @@ function App() {
             path="/audits"
             element={
               <ProtectedRoute>
-                <AuditHistory />
+                {isSuperadmin ? (
+                  <Navigate to="/admin/users" replace />
+                ) : (
+                  <AuditHistory />
+                )}
+              </ProtectedRoute>
+            }
+          />
+          
+          {/* Admin Routes */}
+          <Route
+            path="/admin/users"
+            element={
+              <ProtectedRoute requireAdmin={true}>
+                <ManageUsers />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/admins"
+            element={
+              <ProtectedRoute requireSuperadmin={true}>
+                <ManageAdmins />
               </ProtectedRoute>
             }
           />
 
-          {/* Default redirect */}
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          {/* Default redirect - superadmins go to admin panel */}
+          <Route 
+            path="/" 
+            element={
+              isSuperadmin ? (
+                <Navigate to="/admin/users" replace />
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )
+            } 
+          />
+          <Route 
+            path="*" 
+            element={
+              isSuperadmin ? (
+                <Navigate to="/admin/users" replace />
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )
+            } 
+          />
         </Routes>
       </main>
     </div>

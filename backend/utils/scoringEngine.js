@@ -3,9 +3,8 @@
  * Handles all score calculations for the Trade Secret Audit
  * 
  * Scoring Scale:
- * - Very Good = 4 points
- * - Good = 3 points
- * - Decent = 2 points
+ * - Very Good = 3 points
+ * - Good = 2 points
  * - Bad = 1 point
  * - Very Bad = 0 points
  * 
@@ -61,7 +60,7 @@ const calculateCategoryScores = (responses, questions) => {
   questions.forEach(question => {
     const categoryKey = CATEGORY_KEYS[question.category];
     if (categoryKey) {
-      const maxPoints = 4 * (question.weight || 1); // Max value is 4
+      const maxPoints = 3 * (question.weight || 1); // Max value is 3
       categoryScores[categoryKey].maxScore += maxPoints;
     }
   });

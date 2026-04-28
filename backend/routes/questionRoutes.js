@@ -5,7 +5,7 @@
 
 const express = require('express');
 const router = express.Router();
-const { protect } = require('../middleware/authMiddleware');
+const { protect, allowRoles } = require('../middleware/authMiddleware');
 const {
   getQuestions,
   getQuestion,
@@ -16,7 +16,7 @@ const {
 // Protected routes
 router.get('/', protect, getQuestions);
 router.get('/list', protect, getQuestionsList);
-router.post('/seed', protect, seedQuestions);
+router.post('/seed', protect, allowRoles('superadmin'), seedQuestions); // Superadmin only
 router.get('/:id', protect, getQuestion);
 
 module.exports = router;

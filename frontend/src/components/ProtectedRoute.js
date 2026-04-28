@@ -1,22 +1,46 @@
 /**
  * Protected Route Component
  * Redirects to login if user is not authenticated
+ * Supports role-based access control
  */
 
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth();
+const ProtectedRoute = ({ children, requireAdmin = false, requireSuperadmin = false }) => {
+  const { isAuthenticated, isAdmin, isSuperadmin, loading } = useAuth();
   const location = useLocation();
 
   if (loading) {
     return null;
   }
 
+  // Check authentication first
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  // Check superadmin requirement
+  if (requireSuperadmin && !isSuperadmin) {
+    return (
+      <div className="container" style={{ textAlign: 'center', marginTop: '2rem' }}>
+        <h2>🚫 Access Denied</h2>
+        <p>This page is only accessible to superadmins.</p>
+        <a href="/dashboard" className="btn btn-primary">Go to Dashboard</a>
+      </div>
+    );
+  }
+
+  // Check admin requirement (admin or superadmin)
+  if (requireAdmin && !isAdmin) {
+    return (
+      <div className="container" style={{ textAlign: 'center', marginTop: '2rem' }}>
+        <h2>🚫 Access Denied</h2>
+        <p>This page is only accessible to administrators.</p>
+        <a href="/dashboard" className="btn btn-primary">Go to Dashboard</a>
+      </div>
+    );
   }
 
   return children;

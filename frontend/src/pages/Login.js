@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const Login = () => {
@@ -105,13 +105,6 @@ const Login = () => {
             {isSubmitting ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
-
-        <div className="auth-footer">
-          <p>
-            Don't have an account?{' '}
-            <Link to="/register">Create one</Link>
-          </p>
-        </div>
       </div>
     </div>
   );

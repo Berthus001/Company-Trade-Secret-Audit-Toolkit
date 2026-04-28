@@ -10,13 +10,13 @@ const optionSchema = new mongoose.Schema({
   label: {
     type: String,
     required: true,
-    enum: ['Very Good', 'Good', 'Decent', 'Bad', 'Very Bad']
+    enum: ['Very Good', 'Good', 'Bad', 'Very Bad']
   },
   value: {
     type: Number,
     required: true,
     min: 0,
-    max: 4
+    max: 3
   },
   description: {
     type: String,
@@ -43,9 +43,9 @@ const questionSchema = new mongoose.Schema({
     type: [optionSchema],
     validate: {
       validator: function(v) {
-        return v && v.length === 5; // Must have exactly 5 options
+        return v && v.length === 4; // Must have exactly 4 options
       },
-      message: 'Question must have exactly 5 options'
+      message: 'Question must have exactly 4 options'
     }
   },
   weight: {

@@ -8,6 +8,7 @@ const Question = require('../models/Question');
 const { asyncHandler } = require('../middleware/errorMiddleware');
 const { processAuditScores, formatResponse } = require('../utils/scoringEngine');
 const { generateRecommendations } = require('../utils/recommendationEngine');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 /**
  * @desc    Submit a new audit
@@ -90,13 +91,13 @@ const submitAudit = asyncHandler(async (req, res) => {
 
 /**
  * @desc    Get all audits for current user
- * @route   GET /api/audits
+ * @route   GET /api/audits/my
  * @access  Private
  */
-const getAudits = asyncHandler(async (req, res) => {
+const getMyAudits = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10, riskLevel, startDate, endDate } = req.query;
 
-  // Build query
+  // Build query - only current user's audits
   const query = { user: req.user._id };
 
   if (riskLevel) {
@@ -135,9 +136,60 @@ const getAudits = asyncHandler(async (req, res) => {
 });
 
 /**
+ * @desc    Get all audits (admin/superadmin only)
+ * @route   GET /api/audits
+ * @access  Private/Admin/Superadmin
+ */
+const getAllAudits = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 10, riskLevel, startDate, endDate, userId } = req.query;
+
+  // Build query - admins can see all audits
+  const query = {};
+
+  if (userId) {
+    query.user = userId;
+  }
+
+  if (riskLevel) {
+    query.riskLevel = riskLevel;
+  }
+
+  if (startDate || endDate) {
+    query.auditDate = {};
+    if (startDate) query.auditDate.$gte = new Date(startDate);
+    if (endDate) query.auditDate.$lte = new Date(endDate);
+  }
+
+  // Pagination
+  const skip = (parseInt(page) - 1) * parseInt(limit);
+  const totalCount = await Audit.countDocuments(query);
+  const totalPages = Math.ceil(totalCount / parseInt(limit));
+
+  // Get audits with user details
+  const audits = await Audit.find(query)
+    .populate('user', 'name email company')
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(parseInt(limit))
+    .select('companyName auditDate percentageScore riskLevel status createdAt user');
+
+  res.status(200).json({
+    success: true,
+    count: audits.length,
+    pagination: {
+      page: parseInt(page),
+      limit: parseInt(limit),
+      totalPages,
+      totalCount
+    },
+    data: audits
+  });
+});
+
+/**
  * @desc    Get single audit by ID
  * @route   GET /api/audits/:id
- * @access  Private (Owner only)
+ * @access  Private (Owner or Admin)
  */
 const getAudit = asyncHandler(async (req, res) => {
   const audit = await Audit.findById(req.params.id)
@@ -150,8 +202,11 @@ const getAudit = asyncHandler(async (req, res) => {
     });
   }
 
-  // Check ownership
-  if (audit.user._id.toString() !== req.user._id.toString()) {
+  // Check ownership OR admin role
+  const isOwner = audit.user._id.toString() === req.user._id.toString();
+  const isAdmin = req.user.role === 'admin' || req.user.role === 'superadmin';
+
+  if (!isOwner && !isAdmin) {
     return res.status(403).json({
       success: false,
       error: 'Not authorized to access this audit'
@@ -167,7 +222,7 @@ const getAudit = asyncHandler(async (req, res) => {
 /**
  * @desc    Delete an audit
  * @route   DELETE /api/audits/:id
- * @access  Private (Owner only)
+ * @access  Private (Owner or Admin)
  */
 const deleteAudit = asyncHandler(async (req, res) => {
   const audit = await Audit.findById(req.params.id);
@@ -179,8 +234,11 @@ const deleteAudit = asyncHandler(async (req, res) => {
     });
   }
 
-  // Check ownership
-  if (audit.user.toString() !== req.user._id.toString()) {
+  // Check ownership OR admin role
+  const isOwner = audit.user.toString() === req.user._id.toString();
+  const isAdmin = req.user.role === 'admin' || req.user.role === 'superadmin';
+
+  if (!isOwner && !isAdmin) {
     return res.status(403).json({
       success: false,
       error: 'Not authorized to delete this audit'
@@ -221,7 +279,7 @@ const getAuditSummary = asyncHandler(async (req, res) => {
 /**
  * @desc    Compare two audits
  * @route   GET /api/audits/compare
- * @access  Private
+ * @access  Private (Owner or Admin)
  */
 const compareAudits = asyncHandler(async (req, res) => {
   const { audit1, audit2 } = req.query;
@@ -233,10 +291,14 @@ const compareAudits = asyncHandler(async (req, res) => {
     });
   }
 
-  const audits = await Audit.find({
-    _id: { $in: [audit1, audit2] },
-    user: req.user._id
-  }).select('companyName auditDate categoryScores totalScore percentageScore riskLevel');
+  // Admins can compare any audits, users can only compare their own
+  const isAdmin = req.user.role === 'admin' || req.user.role === 'superadmin';
+  const query = isAdmin 
+    ? { _id: { $in: [audit1, audit2] } }
+    : { _id: { $in: [audit1, audit2] }, user: req.user._id };
+
+  const audits = await Audit.find(query)
+    .select('companyName auditDate categoryScores totalScore percentageScore riskLevel');
 
   if (audits.length !== 2) {
     return res.status(404).json({
@@ -269,11 +331,130 @@ const compareAudits = asyncHandler(async (req, res) => {
   });
 });
 
+/**
+ * @desc    Generate AI recommendations using Gemini
+ * @route   POST /api/recommendations
+ * @access  Private
+ */
+const generateAIRecommendations = async (req, res) => {
+  const { categoryScores, weakCategories } = req.body;
+
+  // Validate input
+  if (!categoryScores || !weakCategories) {
+    return res.status(400).json({
+      success: false,
+      error: 'categoryScores and weakCategories are required'
+    });
+  }
+
+  // Fallback recommendations if all AI models fail
+  const fallbackRecommendations = `- Implement Multi-Factor Authentication (MFA) for all systems accessing trade secrets
+- Enforce Role-Based Access Control (RBAC) with least privilege principles
+- Enable AES-256 encryption for all data at rest containing sensitive information
+- Deploy end-to-end encryption for all data transmissions
+- Establish mandatory security awareness training for all employees handling trade secrets
+- Configure automated access revocation within 24 hours of employee termination
+- Install Data Loss Prevention (DLP) tools to monitor and block unauthorized data transfers
+- Implement centralized logging with real-time alerting for suspicious activities`;
+
+  // Models to try in order (from fastest/cheapest to most capable)
+  const modelsToTry = [
+    'gemini-1.5-flash',
+    'gemini-1.5-pro',
+    'gemini-pro'
+  ];
+
+  // Build prompt
+  const prompt = `You are a cybersecurity expert analyzing trade secret protection audit results.
+
+INPUT DATA:
+Category Scores:
+${Object.entries(categoryScores).map(([category, data]) => 
+  `- ${category}: ${data.score}% (${data.earnedPoints}/${data.maxPoints} points)`
+).join('\n')}
+
+Weak Categories Requiring Attention:
+${weakCategories.map(cat => `- ${cat}`).join('\n')}
+
+OUTPUT REQUIREMENTS:
+Generate 6-8 critical security recommendations as bullet points.
+
+STRICT RULES:
+1. Output ONLY bullet points - no headers, no explanations, no introductions, no conclusions
+2. Start each bullet with a dash (-)
+3. Begin each recommendation with an action verb: Implement, Enforce, Restrict, Enable, Deploy, Establish, Configure, Mandate, Review, Audit, Monitor, Update, Install, Require
+4. Focus ONLY on these areas:
+   - Access Control (RBAC, authentication, authorization, permissions)
+   - Encryption (data at rest, data in transit, key management)
+   - Security Policies (NDAs, training, data classification, incident response)
+   - Monitoring & Auditing (logging, SIEM, alerts, compliance checks)
+5. Be specific and actionable
+6. Prioritize recommendations based on weakest categories first
+7. Each recommendation must be one concise sentence
+
+DO NOT:
+- Add any text before or after the bullet points
+- Number the recommendations
+- Add categories or section headers
+- Provide explanations or reasoning
+- Use conversational language
+
+EXAMPLE FORMAT (DO NOT copy these, generate new ones based on INPUT DATA):
+- Implement Multi-Factor Authentication (MFA) for all users accessing trade secret systems
+- Enforce strict Role-Based Access Control with quarterly permission reviews
+- Enable end-to-end encryption for all data transmissions containing sensitive information
+- Deploy centralized logging system with real-time alerting for unauthorized access attempts
+- Establish mandatory annual security awareness training for all employees
+- Restrict USB device usage on systems containing trade secrets
+
+Generate recommendations NOW:`;
+
+  // Try each model in cascade
+  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+  
+  for (const modelName of modelsToTry) {
+    try {
+      console.log(`Trying model: ${modelName}`);
+      const model = genAI.getGenerativeModel({ model: modelName });
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const recommendations = response.text();
+
+      console.log(`✓ Success with model: ${modelName}`);
+      return res.status(200).json({
+        success: true,
+        data: {
+          recommendations: recommendations.trim(),
+          source: 'ai',
+          model: modelName
+        }
+      });
+
+    } catch (error) {
+      console.error(`✗ ${modelName} failed:`, error.message);
+      // Continue to next model
+    }
+  }
+
+  // All models failed - return fallback
+  console.log('All AI models failed. Using fallback recommendations.');
+  res.status(200).json({
+    success: true,
+    data: {
+      recommendations: fallbackRecommendations,
+      source: 'fallback',
+      note: 'AI service temporarily unavailable. Showing general security recommendations.'
+    }
+  });
+};
+
 module.exports = {
   submitAudit,
-  getAudits,
+  getMyAudits,
+  getAllAudits,
   getAudit,
   deleteAudit,
   getAuditSummary,
-  compareAudits
+  compareAudits,
+  generateAIRecommendations
 };

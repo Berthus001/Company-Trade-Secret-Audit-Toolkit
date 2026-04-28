@@ -92,9 +92,13 @@ export const AuthProvider = ({ children }) => {
 
   const value = {
     user,
+    role: user?.role || null,
     loading,
     error,
     isAuthenticated: !!user,
+    isSuperadmin: user?.role === 'superadmin',
+    isAdmin: user?.role === 'admin' || user?.role === 'superadmin',
+    isUser: !!user,
     register,
     login,
     logout,

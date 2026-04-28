@@ -41,8 +41,15 @@ const protect = async (req, res, next) => {
         });
       }
 
-      // Attach user to request object
-      req.user = user;
+      // Attach user to request object with decoded payload (includes role)
+      req.user = {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        company: user.company,
+        role: decoded.role || user.role,
+        _id: user._id
+      };
       next();
 
     } catch (error) {
@@ -89,6 +96,24 @@ const adminOnly = (req, res, next) => {
 };
 
 /**
+ * Role-based access control middleware
+ * Must be used after protect middleware
+ * @param {...string} roles - Allowed roles (e.g., 'admin', 'superadmin', 'user')
+ * @returns Middleware function
+ */
+const allowRoles = (...roles) => {
+  return (req, res, next) => {
+    if (!req.user || !roles.includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        error: 'Not authorized, insufficient permissions'
+      });
+    }
+    next();
+  };
+};
+
+/**
  * Optional authentication
  * Attaches user to request if token present, but doesn't require it
  */
@@ -105,7 +130,14 @@ const optionalAuth = async (req, res, next) => {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         const user = await User.findById(decoded.id).select('-password');
         if (user) {
-          req.user = user;
+          req.user = {
+            id: user._id,
+            name: user.name,
+            email: user.email,
+            company: user.company,
+            role: decoded.role || user.role,
+            _id: user._id
+          };
         }
       } catch (error) {
         // Token invalid, but that's okay for optional auth
@@ -119,4 +151,4 @@ const optionalAuth = async (req, res, next) => {
   }
 };
 
-module.exports = { protect, adminOnly, optionalAuth };
+module.exports = { protect, adminOnly, allowRoles, optionalAuth };

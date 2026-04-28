@@ -11,16 +11,42 @@ import Loading from '../components/Loading';
 import RiskBadge from '../components/RiskBadge';
 
 const Dashboard = () => {
-  const { user } = useAuth();
+  const { user, isAdmin, isSuperadmin } = useAuth();
   const [summary, setSummary] = useState(null);
+  const [systemStats, setSystemStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchSummary = async () => {
+    const fetchDashboardData = async () => {
       try {
+        // Fetch audit summary based on role
         const data = await api.getAuditSummary();
         setSummary(data);
+        
+        // Admins/Superadmins: Fetch additional system stats
+        if (isAdmin || isSuperadmin) {
+          try {
+            const auditsResponse = await api.getAudits();
+            const allAudits = auditsResponse.data || [];
+            
+            // Calculate system-wide statistics
+            const uniqueUsers = new Set(allAudits.map(a => a.user?._id || a.user)).size;
+            const totalAudits = allAudits.length;
+            const avgScore = allAudits.length > 0 
+              ? Math.round(allAudits.reduce((sum, a) => sum + (a.percentageScore || 0), 0) / allAudits.length)
+              : 0;
+            
+            setSystemStats({
+              totalUsers: uniqueUsers,
+              totalAudits: totalAudits,
+              averageScore: avgScore,
+              recentActivity: allAudits.slice(0, 5)
+            });
+          } catch (err) {
+            console.error('Failed to fetch system stats:', err);
+          }
+        }
       } catch (err) {
         setError('Failed to load dashboard data');
         console.error(err);
@@ -29,8 +55,8 @@ const Dashboard = () => {
       }
     };
 
-    fetchSummary();
-  }, []);
+    fetchDashboardData();
+  }, [isAdmin, isSuperadmin]);
 
   if (loading) return <Loading message="Loading dashboard..." />;
 
@@ -41,6 +67,11 @@ const Dashboard = () => {
           <h1>Welcome, {user?.name}</h1>
           <p className="header-subtitle">
             Trade Secret Audit Dashboard for {user?.company}
+            {user?.role && (
+              <span style={{ marginLeft: '0.5rem', padding: '0.25rem 0.5rem', backgroundColor: '#e3f2fd', color: '#1976d2', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                {user.role.toUpperCase()}
+              </span>
+            )}
           </p>
         </div>
         <Link to="/audit/new" className="btn btn-primary">
@@ -49,6 +80,44 @@ const Dashboard = () => {
       </div>
 
       {error && <div className="alert alert-error">{error}</div>}
+
+      {/* Role-based content: Superadmin System Overview */}
+      {isSuperadmin && systemStats && (
+        <div className="dashboard-card" style={{ marginBottom: '1.5rem', backgroundColor: '#f3e5f5', borderLeft: '4px solid #9c27b0' }}>
+          <h3 style={{ color: '#9c27b0' }}>🔐 System Overview (Superadmin)</h3>
+          <div className="stats-grid">
+            <div className="stat-item">
+              <span className="stat-value">{systemStats.totalUsers}</span>
+              <span className="stat-label">Total Users</span>
+            </div>
+            <div className="stat-item">
+              <span className="stat-value">{systemStats.totalAudits}</span>
+              <span className="stat-label">System Audits</span>
+            </div>
+            <div className="stat-item">
+              <span className="stat-value">{systemStats.averageScore}%</span>
+              <span className="stat-label">Avg System Score</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Role-based content: Admin Stats */}
+      {isAdmin && !isSuperadmin && systemStats && (
+        <div className="dashboard-card" style={{ marginBottom: '1.5rem', backgroundColor: '#e3f2fd', borderLeft: '4px solid #2196f3' }}>
+          <h3 style={{ color: '#2196f3' }}>👥 User Management Summary (Admin)</h3>
+          <div className="stats-grid">
+            <div className="stat-item">
+              <span className="stat-value">{systemStats.totalUsers}</span>
+              <span className="stat-label">Total Users</span>
+            </div>
+            <div className="stat-item">
+              <span className="stat-value">{systemStats.totalAudits}</span>
+              <span className="stat-label">All Audits</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="dashboard-grid">
         {/* Summary Stats */}

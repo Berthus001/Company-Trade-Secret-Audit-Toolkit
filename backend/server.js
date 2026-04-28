@@ -13,12 +13,15 @@ const rateLimit = require('express-rate-limit');
 const dotenv = require('dotenv');
 const connectDB = require('./config/db');
 const errorHandler = require('./middleware/errorMiddleware');
+const seedSuperadmin = require('./utils/seedSuperadmin');
 
 // Load environment variables
 dotenv.config();
 
-// Connect to MongoDB
-connectDB();
+// Connect to MongoDB and seed superadmin
+connectDB().then(() => {
+  seedSuperadmin();
+});
 
 // Initialize Express app
 const app = express();

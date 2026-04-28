@@ -5,14 +5,16 @@
 
 const express = require('express');
 const router = express.Router();
-const { protect } = require('../middleware/authMiddleware');
+const { protect, allowRoles } = require('../middleware/authMiddleware');
 const {
   submitAudit,
-  getAudits,
+  getMyAudits,
+  getAllAudits,
   getAudit,
   deleteAudit,
   getAuditSummary,
-  compareAudits
+  compareAudits,
+  generateAIRecommendations
 } = require('../controllers/auditController');
 
 // All routes are protected
@@ -20,10 +22,19 @@ router.use(protect);
 
 // Audit management
 router.post('/', submitAudit);
-router.get('/', getAudits);
+
+// Get all audits (admin/superadmin only)
+router.get('/', allowRoles('admin', 'superadmin'), getAllAudits);
+
+// Get current user's audits (all roles)
+router.get('/my', getMyAudits);
+
 router.get('/summary', getAuditSummary);
 router.get('/compare', compareAudits);
 router.get('/:id', getAudit);
 router.delete('/:id', deleteAudit);
+
+// AI Recommendations
+router.post('/recommendations', generateAIRecommendations);
 
 module.exports = router;

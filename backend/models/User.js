@@ -39,7 +39,7 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['user', 'admin'],
+    enum: ['superadmin', 'admin', 'user'],
     default: 'user'
   }
 }, {
@@ -80,7 +80,7 @@ userSchema.methods.comparePassword = async function(enteredPassword) {
  */
 userSchema.methods.generateToken = function() {
   return jwt.sign(
-    { id: this._id },
+    { id: this._id, role: this.role },
     process.env.JWT_SECRET,
     { expiresIn: '30d' }
   );

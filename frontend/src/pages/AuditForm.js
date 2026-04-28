@@ -60,6 +60,7 @@ const AuditForm = () => {
     };
 
     fetchQuestions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSelect = (questionId, value) => {

@@ -42,25 +42,6 @@ export const AuthProvider = ({ children }) => {
     initAuth();
   }, []);
 
-  // Register new user
-  const register = async (userData) => {
-    try {
-      setError(null);
-      const response = await api.register(userData);
-      const { token, ...user } = response;
-      
-      localStorage.setItem('token', token);
-      api.setAuthToken(token);
-      setUser(user);
-      
-      return { success: true };
-    } catch (err) {
-      const message = err.response?.data?.error || 'Registration failed';
-      setError(message);
-      return { success: false, error: message };
-    }
-  };
-
   // Login user
   const login = async (credentials) => {
     try {
@@ -99,7 +80,6 @@ export const AuthProvider = ({ children }) => {
     isSuperadmin: user?.role === 'superadmin',
     isAdmin: user?.role === 'admin' || user?.role === 'superadmin',
     isUser: !!user,
-    register,
     login,
     logout,
     clearError

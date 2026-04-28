@@ -30,11 +30,6 @@ const api = {
   // Auth endpoints
   // ==================
   
-  register: async (userData) => {
-    const response = await axiosInstance.post('/auth/register', userData);
-    return response.data.data;
-  },
-
   login: async (credentials) => {
     const response = await axiosInstance.post('/auth/login', credentials);
     return response.data.data;

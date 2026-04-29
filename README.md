@@ -75,7 +75,10 @@ npm start
 │   ├── middleware/      # Auth & error handling
 │   ├── models/          # Mongoose schemas
 │   ├── routes/          # API routes
+│   ├── services/        # External services (Gemini AI)
 │   ├── utils/           # Scoring & recommendation engines
+│   ├── scripts/         # Utility scripts (seeder, test accounts)
+│   ├── tests/           # Test files
 │   └── server.js        # Express app entry
 │
 ├── frontend/
@@ -92,7 +95,9 @@ npm start
     ├── API.md           # API documentation
     ├── ERD.md           # Database design
     ├── SECURITY.md      # Security considerations
-    └── DEPLOYMENT.md    # Deployment guide
+    ├── DEPLOYMENT.md    # Deployment guide
+    ├── GEMINI_INTEGRATION.md       # AI integration guide
+    └── AI_RECOMMENDATIONS_GUIDE.md # AI recommendations usage
 ```
 
 ## 🔌 API Endpoints

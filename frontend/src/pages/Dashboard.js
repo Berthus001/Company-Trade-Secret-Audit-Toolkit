@@ -70,10 +70,10 @@ const Dashboard = () => {
   useEffect(() => {
     fetchDashboardData();
 
-    // Auto-refresh every 30 seconds
+    // Auto-refresh every 60 seconds (reduced from 30s to avoid rate limiting)
     const interval = setInterval(() => {
       fetchDashboardData(true);
-    }, 30000);
+    }, 60000);
 
     return () => clearInterval(interval);
   }, [fetchDashboardData]);

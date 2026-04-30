@@ -3,7 +3,7 @@
  * Overview of audit activity and quick actions
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
@@ -18,7 +18,7 @@ const Dashboard = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
 
-  const fetchDashboardData = async (isRefresh = false) => {
+  const fetchDashboardData = useCallback(async (isRefresh = false) => {
     try {
       if (isRefresh) {
         setRefreshing(true);
@@ -65,7 +65,7 @@ const Dashboard = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [isAdmin, isSuperadmin]);
 
   useEffect(() => {
     fetchDashboardData();
@@ -76,7 +76,7 @@ const Dashboard = () => {
     }, 30000);
 
     return () => clearInterval(interval);
-  }, [isAdmin, isSuperadmin]);
+  }, [fetchDashboardData]);
 
   if (loading) return <Loading message="Loading dashboard..." />;
 

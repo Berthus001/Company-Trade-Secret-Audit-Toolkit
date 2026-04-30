@@ -87,20 +87,19 @@ const Navbar = () => {
                 {user?.name} ({user?.company})
                 {user?.role && <span className="role-badge">{user.role}</span>}
               </span>
-              <button onClick={handleLogout} className="btn btn-outline btn-sm">
-                Logout
+              <button 
+                onClick={handleLogout} 
+                className="btn btn-danger btn-sm"
+                style={{ 
+                  marginLeft: '1rem',
+                  fontWeight: '500',
+                  padding: '0.5rem 1rem'
+                }}
+              >
+                🚪 Logout
               </button>
             </>
-          ) : (
-            <>
-              <Link
-                to="/login"
-                className={`nav-link ${isActive('/login') ? 'active' : ''}`}
-              >
-                Login
-              </Link>
-            </>
-          )}
+          ) : null}
         </div>
       </div>
     </nav>

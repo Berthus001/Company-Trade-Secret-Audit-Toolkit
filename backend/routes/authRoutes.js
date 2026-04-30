@@ -7,6 +7,7 @@ const express = require('express');
 const router = express.Router();
 const { protect, allowRoles } = require('../middleware/authMiddleware');
 const {
+  registerUser,
   loginUser,
   getMe,
   updateProfile,
@@ -19,6 +20,7 @@ const {
 } = require('../controllers/authController');
 
 // Public routes
+router.post('/register', registerUser);
 router.post('/login', loginUser);
 
 // Protected routes - User creation with RBAC

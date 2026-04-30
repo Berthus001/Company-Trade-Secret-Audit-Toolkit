@@ -5,11 +5,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import Loading from '../components/Loading';
 import RiskBadge from '../components/RiskBadge';
 
 const AuditHistory = () => {
+  const { isAdmin, isSuperadmin } = useAuth();
   const [audits, setAudits] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -28,7 +30,10 @@ const AuditHistory = () => {
         params.riskLevel = riskLevel;
       }
       
-      const response = await api.getAudits(params);
+      // Use appropriate endpoint based on user role
+      const response = (isAdmin || isSuperadmin) 
+        ? await api.getAudits(params)
+        : await api.getMyAudits(params);
       setAudits(response.data);
       setPagination(response.pagination);
     } catch (err) {

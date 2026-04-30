@@ -237,13 +237,14 @@ const createAdmin = asyncHandler(async (req, res) => {
     });
   }
 
-  // Create admin user
+  // Create admin user (set createdBy to superadmin)
   const user = await User.create({
     name,
     email: email.toLowerCase(),
     password,
     company,
-    role: 'admin'
+    role: 'admin',
+    createdBy: req.user._id // Superadmin who created this admin
   });
 
   res.status(201).json({
@@ -253,7 +254,8 @@ const createAdmin = asyncHandler(async (req, res) => {
       name: user.name,
       email: user.email,
       company: user.company,
-      role: user.role
+      role: user.role,
+      createdBy: user.createdBy
     }
   });
 });
@@ -291,13 +293,14 @@ const createUser = asyncHandler(async (req, res) => {
     });
   }
 
-  // Create regular user
+  // Create regular user (set createdBy to admin or superadmin)
   const user = await User.create({
     name,
     email: email.toLowerCase(),
     password,
     company,
-    role: 'user'
+    role: 'user',
+    createdBy: req.user._id // Admin/Superadmin who created this user
   });
 
   res.status(201).json({
@@ -307,7 +310,8 @@ const createUser = asyncHandler(async (req, res) => {
       name: user.name,
       email: user.email,
       company: user.company,
-      role: user.role
+      role: user.role,
+      createdBy: user.createdBy
     }
   });
 });
@@ -316,18 +320,28 @@ const createUser = asyncHandler(async (req, res) => {
  * @desc    Get all users (with optional role filter)
  * @route   GET /api/auth/users
  * @access  Private/Admin/Superadmin
+ * @ownership Admins only see users they created; Superadmins see all
  */
 const getUsers = asyncHandler(async (req, res) => {
   const { role } = req.query;
   
-  // Build query
+  // Build query based on user role
   const query = {};
+  
+  // Admins can ONLY see users they created
+  if (req.user.role === 'admin') {
+    query.createdBy = req.user._id;
+  }
+  // Superadmins see all users (no filter)
+  
+  // Apply role filter if provided
   if (role) {
     query.role = role;
   }
 
   const users = await User.find(query)
     .select('-password')
+    .populate('createdBy', 'name email role')
     .sort({ createdAt: -1 });
 
   res.status(200).json({
@@ -341,6 +355,7 @@ const getUsers = asyncHandler(async (req, res) => {
  * @desc    Update user
  * @route   PUT /api/auth/users/:id
  * @access  Private/Admin/Superadmin
+ * @ownership Admins can only update users they created; Superadmins can update all
  */
 const updateUser = asyncHandler(async (req, res) => {
   const { name, email, company, role } = req.body;
@@ -351,6 +366,32 @@ const updateUser = asyncHandler(async (req, res) => {
     return res.status(404).json({
       success: false,
       error: 'User not found'
+    });
+  }
+
+  // Ownership check: Admins can only update users they created
+  if (req.user.role === 'admin') {
+    if (!user.createdBy || user.createdBy.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied: You can only update users you created'
+      });
+    }
+
+    // Admins cannot change roles
+    if (role && role !== user.role) {
+      return res.status(403).json({
+        success: false,
+        error: 'Admins cannot change user roles'
+      });
+    }
+  }
+
+  // Prevent changing superadmin role (unless done by another superadmin)
+  if (user.role === 'superadmin' && req.user.role !== 'superadmin') {
+    return res.status(403).json({
+      success: false,
+      error: 'Cannot modify superadmin accounts'
     });
   }
 
@@ -391,6 +432,7 @@ const updateUser = asyncHandler(async (req, res) => {
  * @desc    Delete user
  * @route   DELETE /api/auth/users/:id
  * @access  Private/Admin/Superadmin
+ * @ownership Admins can only delete users they created; Superadmins can delete all
  */
 const deleteUser = asyncHandler(async (req, res) => {
   const user = await User.findById(req.params.id);
@@ -402,7 +444,17 @@ const deleteUser = asyncHandler(async (req, res) => {
     });
   }
 
-  // Prevent deleting superadmin accounts (optional safety)
+  // Ownership check: Admins can only delete users they created
+  if (req.user.role === 'admin') {
+    if (!user.createdBy || user.createdBy.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied: You can only delete users you created'
+      });
+    }
+  }
+
+  // Prevent deleting superadmin accounts
   if (user.role === 'superadmin') {
     return res.status(403).json({
       success: false,

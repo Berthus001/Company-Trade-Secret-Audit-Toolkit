@@ -41,6 +41,11 @@ const userSchema = new mongoose.Schema({
     type: String,
     enum: ['superadmin', 'admin', 'user'],
     default: 'user'
+  },
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null // null for superadmin or self-registered users
   }
 }, {
   timestamps: true // Adds createdAt and updatedAt automatically
@@ -48,6 +53,9 @@ const userSchema = new mongoose.Schema({
 
 // Index for faster email lookups
 userSchema.index({ email: 1 });
+
+// Index for ownership queries
+userSchema.index({ createdBy: 1 });
 
 /**
  * Pre-save middleware to hash password

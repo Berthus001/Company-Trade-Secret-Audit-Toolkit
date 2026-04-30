@@ -94,6 +94,11 @@ const api = {
     return response.data;
   },
 
+  getMyAudits: async (params = {}) => {
+    const response = await axiosInstance.get('/audits/my', { params });
+    return response.data;
+  },
+
   getAudit: async (id) => {
     const response = await axiosInstance.get(`/audits/${id}`);
     return response.data.data;

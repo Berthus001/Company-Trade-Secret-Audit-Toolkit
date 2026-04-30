@@ -27,7 +27,7 @@ const Dashboard = () => {
         // Admins/Superadmins: Fetch additional system stats
         if (isAdmin || isSuperadmin) {
           try {
-            const auditsResponse = await api.getAudits();
+            const auditsResponse = await api.getAudits({ limit: 100 });
             const allAudits = auditsResponse.data || [];
             
             // Calculate system-wide statistics

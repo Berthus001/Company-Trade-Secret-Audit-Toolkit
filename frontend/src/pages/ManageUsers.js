@@ -33,7 +33,6 @@ const ManageUsers = () => {
     try {
       setLoading(true);
       const response = await api.getUsers('user');
-      console.log('API Response:', response);
       setUsers(response.data || []);
     } catch (err) {
       const errorMsg = err.response?.data?.error || err.message || 'Failed to load users';

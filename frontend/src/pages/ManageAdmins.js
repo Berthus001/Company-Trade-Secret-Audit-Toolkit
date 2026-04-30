@@ -33,7 +33,6 @@ const ManageAdmins = () => {
     try {
       setLoading(true);
       const response = await api.getUsers('admin');
-      console.log('API Response:', response);
       setAdmins(response.data || []);
     } catch (err) {
       const errorMsg = err.response?.data?.error || err.message || 'Failed to load admins';

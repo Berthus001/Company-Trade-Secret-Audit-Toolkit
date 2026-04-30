@@ -15,47 +15,67 @@ const Dashboard = () => {
   const [summary, setSummary] = useState(null);
   const [systemStats, setSystemStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        // Fetch audit summary based on role
-        const data = await api.getAuditSummary();
-        setSummary(data);
-        
-        // Admins/Superadmins: Fetch additional system stats
-        if (isAdmin || isSuperadmin) {
-          try {
-            const auditsResponse = await api.getAudits({ limit: 100 });
-            const allAudits = auditsResponse.data || [];
-            
-            // Calculate system-wide statistics
-            const uniqueUsers = new Set(allAudits.map(a => a.user?._id || a.user)).size;
-            const totalAudits = allAudits.length;
-            const avgScore = allAudits.length > 0 
-              ? Math.round(allAudits.reduce((sum, a) => sum + (a.percentageScore || 0), 0) / allAudits.length)
-              : 0;
-            
-            setSystemStats({
-              totalUsers: uniqueUsers,
-              totalAudits: totalAudits,
-              averageScore: avgScore,
-              recentActivity: allAudits.slice(0, 5)
-            });
-          } catch (err) {
-            console.error('Failed to fetch system stats:', err);
-          }
-        }
-      } catch (err) {
-        setError('Failed to load dashboard data');
-        console.error(err);
-      } finally {
-        setLoading(false);
+  const fetchDashboardData = async (isRefresh = false) => {
+    try {
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
       }
-    };
+      setError(null);
 
+      // Fetch audit summary based on role
+      const data = await api.getAuditSummary();
+      setSummary(data);
+      
+      // Admins/Superadmins: Fetch additional system stats
+      if (isAdmin || isSuperadmin) {
+        try {
+          // Fetch users (filtered by ownership for admins)
+          const usersResponse = await api.getUsers('user');
+          const totalUsers = usersResponse.data?.length || 0;
+          
+          // Fetch audits (filtered by ownership for admins)
+          const auditsEndpoint = isSuperadmin ? api.getAudits : api.getMyAudits;
+          const auditsResponse = await auditsEndpoint({ limit: 100 });
+          const allAudits = auditsResponse.data || [];
+          
+          const totalAudits = allAudits.length;
+          const avgScore = allAudits.length > 0 
+            ? Math.round(allAudits.reduce((sum, a) => sum + (a.percentageScore || 0), 0) / allAudits.length)
+            : 0;
+          
+          setSystemStats({
+            totalUsers: totalUsers,
+            totalAudits: totalAudits,
+            averageScore: avgScore,
+            recentActivity: allAudits.slice(0, 5)
+          });
+        } catch (err) {
+          console.error('Failed to fetch system stats:', err);
+        }
+      }
+    } catch (err) {
+      setError('Failed to load dashboard data');
+      console.error(err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
     fetchDashboardData();
+
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(() => {
+      fetchDashboardData(true);
+    }, 30000);
+
+    return () => clearInterval(interval);
   }, [isAdmin, isSuperadmin]);
 
   if (loading) return <Loading message="Loading dashboard..." />;
@@ -74,9 +94,26 @@ const Dashboard = () => {
             )}
           </p>
         </div>
-        <Link to="/audit/new" className="btn btn-primary">
-          + New Audit
-        </Link>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button 
+            onClick={() => fetchDashboardData(true)} 
+            className="btn btn-secondary"
+            disabled={refreshing}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+          >
+            {refreshing ? (
+              <>
+                <span style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>🔄</span>
+                Refreshing...
+              </>
+            ) : (
+              <>🔄 Refresh</>
+            )}
+          </button>
+          <Link to="/audit/new" className="btn btn-primary">
+            + New Audit
+          </Link>
+        </div>
       </div>
 
       {error && <div className="alert alert-error">{error}</div>}

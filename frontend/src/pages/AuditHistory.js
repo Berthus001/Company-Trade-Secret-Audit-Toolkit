@@ -3,7 +3,7 @@
  * Lists all previous audits with filtering options
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
@@ -22,7 +22,7 @@ const AuditHistory = () => {
     totalCount: 0
   });
 
-  const fetchAudits = async (page = 1, riskLevel = null) => {
+  const fetchAudits = useCallback(async (page = 1, riskLevel = null) => {
     setLoading(true);
     try {
       const params = { page, limit: 10 };
@@ -41,11 +41,11 @@ const AuditHistory = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [isAdmin, isSuperadmin]);
 
   useEffect(() => {
     fetchAudits(1, filter);
-  }, [filter]);
+  }, [fetchAudits, filter]);
 
   const handleFilterChange = (newFilter) => {
     setFilter(newFilter);

@@ -15,13 +15,51 @@ const axiosInstance = axios.create({
   }
 });
 
+// Request interceptor - Automatically attach token to all requests
+axiosInstance.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor - Handle 401 errors (token expired/invalid)
+axiosInstance.interceptors.response.use(
+  (response) => {
+    return response;
+  },
+  (error) => {
+    if (error.response?.status === 401) {
+      // Token expired or invalid - logout user
+      localStorage.removeItem('token');
+      delete axiosInstance.defaults.headers.common['Authorization'];
+      
+      // Redirect to login if not already there
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 // API service object
 const api = {
   // Set auth token for all requests
+  // Note: This is now handled automatically by the request interceptor
+  // Kept for backward compatibility
   setAuthToken: (token) => {
     if (token) {
+      localStorage.setItem('token', token);
       axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     } else {
+      localStorage.removeItem('token');
       delete axiosInstance.defaults.headers.common['Authorization'];
     }
   },

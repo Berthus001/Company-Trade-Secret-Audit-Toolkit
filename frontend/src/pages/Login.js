@@ -62,9 +62,9 @@ const Login = () => {
           <p>Sign in to access your trade secret audits</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="auth-form">
+        <form onSubmit={handleSubmit} className="auth-form" data-testid="login-form">
           {(formError || error) && (
-            <div className="alert alert-error">
+            <div className="alert alert-error" data-testid="login-error-message">
               {formError || error}
             </div>
           )}
@@ -79,6 +79,7 @@ const Login = () => {
               onChange={handleChange}
               placeholder="you@company.com"
               autoComplete="email"
+              data-testid="login-email-input"
               required
             />
           </div>
@@ -93,6 +94,7 @@ const Login = () => {
               onChange={handleChange}
               placeholder="••••••••"
               autoComplete="current-password"
+              data-testid="login-password-input"
               required
             />
           </div>
@@ -101,6 +103,7 @@ const Login = () => {
             type="submit"
             className="btn btn-primary btn-block"
             disabled={isSubmitting}
+            data-testid="login-submit-button"
           >
             {isSubmitting ? 'Signing in...' : 'Sign In'}
           </button>

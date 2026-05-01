@@ -1,0 +1,838 @@
+{
+  "info": {
+    "name": "Trade Secret Audit Toolkit API",
+    "description": "Complete API collection for testing Trade Secret Audit Toolkit",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "trade-secret-audit-api-2026",
+    "version": "1.0.0"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{authToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000/api",
+      "type": "string"
+    },
+    {
+      "key": "authToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "auditId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health Check",
+      "item": [
+        {
+          "name": "Check API Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            },
+            "description": "Check if API is running"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.environment.set('authToken', response.data.token);",
+                  "    pm.environment.set('userId', response.data._id);",
+                  "    pm.test('Registration successful', () => {",
+                  "        pm.expect(response.success).to.be.true;",
+                  "        pm.expect(response.data.token).to.exist;",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"testuser@example.com\",\n  \"password\": \"SecurePass123\",\n  \"company\": \"Test Company Inc.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "register"]
+            },
+            "description": "Register a new user account"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "POST",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"testuser@example.com\",\n  \"password\": \"SecurePass123\",\n  \"company\": \"Test Company Inc.\"\n}"
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"60d5ec49f1b2c72b8c8e4f1a\",\n    \"name\": \"Test User\",\n    \"email\": \"testuser@example.com\",\n    \"company\": \"Test Company Inc.\",\n    \"role\": \"user\",\n    \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\"\n  }\n}"
+            },
+            {
+              "name": "Error - Email Already Exists",
+              "originalRequest": {
+                "method": "POST"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": false,\n  \"error\": \"Email is already registered\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.environment.set('authToken', response.data.token);",
+                  "    pm.environment.set('userId', response.data._id);",
+                  "    pm.test('Login successful', () => {",
+                  "        pm.expect(response.success).to.be.true;",
+                  "        pm.expect(response.data.token).to.exist;",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"testuser@example.com\",\n  \"password\": \"SecurePass123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Login with email and password"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"60d5ec49f1b2c72b8c8e4f1a\",\n    \"name\": \"Test User\",\n    \"email\": \"testuser@example.com\",\n    \"company\": \"Test Company Inc.\",\n    \"role\": \"user\",\n    \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\"\n  }\n}"
+            },
+            {
+              "name": "Error - Invalid Credentials",
+              "status": "Unauthorized",
+              "code": 401,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": false,\n  \"error\": \"Invalid email or password\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Profile",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "me"]
+            },
+            "description": "Get current user profile"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"60d5ec49f1b2c72b8c8e4f1a\",\n    \"name\": \"Test User\",\n    \"email\": \"testuser@example.com\",\n    \"company\": \"Test Company Inc.\",\n    \"role\": \"user\"\n  }\n}"
+            },
+            {
+              "name": "Error - No Token",
+              "status": "Unauthorized",
+              "code": 401,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": false,\n  \"error\": \"Not authorized, no token provided\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Name\",\n  \"email\": \"newemail@example.com\",\n  \"company\": \"New Company LLC\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "profile"]
+            },
+            "description": "Update current user profile"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Password",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"SecurePass123\",\n  \"newPassword\": \"NewSecurePass456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/password",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "password"]
+            },
+            "description": "Update current user password"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "User Management",
+      "item": [
+        {
+          "name": "Create Admin (Superadmin Only)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Admin User\",\n  \"email\": \"admin@example.com\",\n  \"password\": \"AdminPass123\",\n  \"company\": \"Admin Company\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/users/create-admin",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "users", "create-admin"]
+            },
+            "description": "Create admin user (superadmin only)"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"60d5ec49f1b2c72b8c8e4f1b\",\n    \"name\": \"Admin User\",\n    \"email\": \"admin@example.com\",\n    \"company\": \"Admin Company\",\n    \"role\": \"admin\",\n    \"createdBy\": \"60d5ec49f1b2c72b8c8e4f1a\"\n  }\n}"
+            },
+            {
+              "name": "Error - Insufficient Permissions",
+              "status": "Forbidden",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": false,\n  \"error\": \"Not authorized, insufficient permissions\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create User (Admin/Superadmin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.environment.set('userId', response.data._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Regular User\",\n  \"email\": \"user@example.com\",\n  \"password\": \"UserPass123\",\n  \"company\": \"User Company\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/users/create-user",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "users", "create-user"]
+            },
+            "description": "Create regular user (admin or superadmin)"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"60d5ec49f1b2c72b8c8e4f1c\",\n    \"name\": \"Regular User\",\n    \"email\": \"user@example.com\",\n    \"company\": \"User Company\",\n    \"role\": \"user\",\n    \"createdBy\": \"60d5ec49f1b2c72b8c8e4f1b\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get All Users",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/users?role=user",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "users"],
+              "query": [
+                {
+                  "key": "role",
+                  "value": "user",
+                  "description": "Filter by role: user, admin, superadmin"
+                }
+              ]
+            },
+            "description": "Get all users (ownership filtered for admins)"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"count\": 2,\n  \"data\": [\n    {\n      \"_id\": \"60d5ec49f1b2c72b8c8e4f1c\",\n      \"name\": \"Regular User\",\n      \"email\": \"user@example.com\",\n      \"company\": \"User Company\",\n      \"role\": \"user\",\n      \"createdBy\": {\n        \"_id\": \"60d5ec49f1b2c72b8c8e4f1b\",\n        \"name\": \"Admin User\",\n        \"email\": \"admin@example.com\",\n        \"role\": \"admin\"\n      }\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update User",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated User Name\",\n  \"email\": \"updateduser@example.com\",\n  \"company\": \"Updated Company\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/users/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "users", "{{userId}}"]
+            },
+            "description": "Update user (ownership enforced for admins)"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"60d5ec49f1b2c72b8c8e4f1c\",\n    \"name\": \"Updated User Name\",\n    \"email\": \"updateduser@example.com\",\n    \"company\": \"Updated Company\",\n    \"role\": \"user\"\n  }\n}"
+            },
+            {
+              "name": "Error - Ownership Denied",
+              "status": "Forbidden",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": false,\n  \"error\": \"Access denied: You can only update users you created\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Delete User",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/users/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "users", "{{userId}}"]
+            },
+            "description": "Delete user (ownership enforced for admins)"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"message\": \"User deleted successfully\"\n}"
+            },
+            {
+              "name": "Error - Ownership Denied",
+              "status": "Forbidden",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": false,\n  \"error\": \"Access denied: You can only delete users you created\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Questions",
+      "item": [
+        {
+          "name": "Get All Questions",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/questions",
+              "host": ["{{baseUrl}}"],
+              "path": ["questions"]
+            },
+            "description": "Get all questions grouped by category"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"Access Control\": [\n      {\n        \"_id\": \"60d5ec49f1b2c72b8c8e4f1d\",\n        \"category\": \"Access Control\",\n        \"question\": \"Are access controls implemented?\",\n        \"weight\": 10,\n        \"isActive\": true\n      }\n    ],\n    \"Data Encryption\": [...],\n    \"Employee Policies\": [...],\n    \"Physical Security\": [...]\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Seed Questions (Superadmin)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"force\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/questions/seed",
+              "host": ["{{baseUrl}}"],
+              "path": ["questions", "seed"]
+            },
+            "description": "Seed default questions (superadmin only)"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Audits",
+      "item": [
+        {
+          "name": "Submit Audit",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.environment.set('auditId', response.data._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"companyName\": \"Test Company Inc.\",\n  \"responses\": [\n    {\n      \"questionId\": \"60d5ec49f1b2c72b8c8e4f1d\",\n      \"selectedValue\": 4,\n      \"comment\": \"Fully implemented\"\n    },\n    {\n      \"questionId\": \"60d5ec49f1b2c72b8c8e4f1e\",\n      \"selectedValue\": 2,\n      \"comment\": \"Partially implemented\"\n    }\n  ],\n  \"notes\": \"Initial security audit\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/audits",
+              "host": ["{{baseUrl}}"],
+              "path": ["audits"]
+            },
+            "description": "Submit a new audit"
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"_id\": \"60d5ec49f1b2c72b8c8e4f20\",\n    \"user\": \"60d5ec49f1b2c72b8c8e4f1a\",\n    \"companyName\": \"Test Company Inc.\",\n    \"responses\": [...],\n    \"categoryScores\": {...},\n    \"totalScore\": 85,\n    \"maxPossibleScore\": 100,\n    \"percentageScore\": 85,\n    \"riskLevel\": \"low\",\n    \"recommendations\": [...],\n    \"status\": \"completed\",\n    \"createdAt\": \"2026-05-01T10:30:00.000Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get My Audits",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/audits/my?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["audits", "my"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "riskLevel",
+                  "value": "high",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Get current user's audits"
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Audits (Admin)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/audits?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["audits"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Get all audits (admin/superadmin only)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Single Audit",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/audits/{{auditId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["audits", "{{auditId}}"]
+            },
+            "description": "Get single audit details"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Audit Summary",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/audits/summary",
+              "host": ["{{baseUrl}}"],
+              "path": ["audits", "summary"]
+            },
+            "description": "Get audit summary statistics"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Audit",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/audits/{{auditId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["audits", "{{auditId}}"]
+            },
+            "description": "Delete audit"
+          },
+          "response": []
+        },
+        {
+          "name": "Generate AI Recommendations",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"categoryScores\": {\n    \"Access Control\": 75,\n    \"Data Encryption\": 60,\n    \"Employee Policies\": 85,\n    \"Physical Security\": 90\n  },\n  \"weakCategories\": [\"Data Encryption\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/audits/recommendations",
+              "host": ["{{baseUrl}}"],
+              "path": ["audits", "recommendations"]
+            },
+            "description": "Generate AI-powered recommendations"
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

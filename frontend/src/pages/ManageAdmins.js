@@ -154,7 +154,7 @@ const ManageAdmins = () => {
           <h1>👑 Manage Admins</h1>
           <p className="header-subtitle">View and manage administrator accounts</p>
         </div>
-        <button className="btn btn-primary" onClick={handleCreateClick}>
+        <button className="btn btn-primary" onClick={handleCreateClick} data-testid="admins-create-button">
           + Create New Admin
         </button>
       </div>
@@ -163,7 +163,7 @@ const ManageAdmins = () => {
       {formSuccess && !showModal && <div className="alert alert-success">{formSuccess}</div>}
 
       <div className="table-container">
-        <table className="user-table">
+        <table className="user-table" data-testid="admins-table">
           <thead>
             <tr>
               <th>Name</th>
@@ -182,7 +182,7 @@ const ManageAdmins = () => {
               </tr>
             ) : (
               admins.map((admin) => (
-                <tr key={admin._id}>
+                <tr key={admin._id} data-testid={`admins-row-${admin._id}`}>
                   <td>{admin.name}</td>
                   <td>{admin.email}</td>
                   <td>{admin.company}</td>
@@ -195,6 +195,7 @@ const ManageAdmins = () => {
                         className="btn-action btn-edit"
                         onClick={() => handleEditClick(admin)}
                         title="Edit admin"
+                        data-testid={`admins-edit-button-${admin._id}`}
                       >
                         ✏️ Edit
                       </button>
@@ -202,6 +203,7 @@ const ManageAdmins = () => {
                         className="btn-action btn-delete"
                         onClick={() => handleDeleteClick(admin._id, admin.name)}
                         title="Delete admin"
+                        data-testid={`admins-delete-button-${admin._id}`}
                       >
                         🗑️ Delete
                       </button>
@@ -228,7 +230,7 @@ const ManageAdmins = () => {
             {formError && <div className="alert alert-error">{formError}</div>}
             {formSuccess && <div className="alert alert-success">{formSuccess}</div>}
 
-            <form onSubmit={handleFormSubmit}>
+            <form onSubmit={handleFormSubmit} data-testid="admins-modal-form">
               <div className="form-group">
                 <label htmlFor="name">Full Name *</label>
                 <input
@@ -237,6 +239,7 @@ const ManageAdmins = () => {
                   name="name"
                   value={formData.name}
                   onChange={handleChange}
+                  data-testid="admins-modal-name-input"
                   required
                 />
               </div>
@@ -249,6 +252,7 @@ const ManageAdmins = () => {
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
+                  data-testid="admins-modal-email-input"
                   required
                 />
               </div>
@@ -263,6 +267,7 @@ const ManageAdmins = () => {
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
+                  data-testid="admins-modal-password-input"
                   required={!editingAdmin}
                   minLength={8}
                 />
@@ -277,6 +282,7 @@ const ManageAdmins = () => {
                   name="company"
                   value={formData.company}
                   onChange={handleChange}
+                  data-testid="admins-modal-company-input"
                   required
                 />
               </div>
@@ -297,10 +303,11 @@ const ManageAdmins = () => {
                   type="button"
                   className="btn btn-outline"
                   onClick={() => setShowModal(false)}
+                  data-testid="admins-modal-cancel-button"
                 >
                   Cancel
                 </button>
-                <button type="submit" className="btn btn-primary">
+                <button type="submit" className="btn btn-primary" data-testid="admins-modal-submit-button">
                   {editingAdmin ? 'Update Admin' : 'Create Admin'}
                 </button>
               </div>

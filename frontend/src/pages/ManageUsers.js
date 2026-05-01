@@ -154,7 +154,7 @@ const ManageUsers = () => {
           <h1>👥 Manage Users</h1>
           <p className="header-subtitle">View and manage regular user accounts</p>
         </div>
-        <button className="btn btn-primary" onClick={handleCreateClick}>
+        <button className="btn btn-primary" onClick={handleCreateClick} data-testid="users-create-button">
           + Create New User
         </button>
       </div>
@@ -163,7 +163,7 @@ const ManageUsers = () => {
       {formSuccess && !showModal && <div className="alert alert-success">{formSuccess}</div>}
 
       <div className="table-container">
-        <table className="user-table">
+        <table className="user-table" data-testid="users-table">
           <thead>
             <tr>
               <th>Name</th>
@@ -182,7 +182,7 @@ const ManageUsers = () => {
               </tr>
             ) : (
               users.map((user) => (
-                <tr key={user._id}>
+                <tr key={user._id} data-testid={`users-row-${user._id}`}>
                   <td>{user.name}</td>
                   <td>{user.email}</td>
                   <td>{user.company}</td>
@@ -195,6 +195,7 @@ const ManageUsers = () => {
                         className="btn-action btn-edit"
                         onClick={() => handleEditClick(user)}
                         title="Edit user"
+                        data-testid={`users-edit-button-${user._id}`}
                       >
                         ✏️ Edit
                       </button>
@@ -202,6 +203,7 @@ const ManageUsers = () => {
                         className="btn-action btn-delete"
                         onClick={() => handleDeleteClick(user._id, user.name)}
                         title="Delete user"
+                        data-testid={`users-delete-button-${user._id}`}
                       >
                         🗑️ Delete
                       </button>
@@ -228,7 +230,7 @@ const ManageUsers = () => {
             {formError && <div className="alert alert-error">{formError}</div>}
             {formSuccess && <div className="alert alert-success">{formSuccess}</div>}
 
-            <form onSubmit={handleFormSubmit}>
+            <form onSubmit={handleFormSubmit} data-testid="users-modal-form">
               <div className="form-group">
                 <label htmlFor="name">Full Name *</label>
                 <input
@@ -237,6 +239,7 @@ const ManageUsers = () => {
                   name="name"
                   value={formData.name}
                   onChange={handleChange}
+                  data-testid="users-modal-name-input"
                   required
                 />
               </div>
@@ -249,6 +252,7 @@ const ManageUsers = () => {
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
+                  data-testid="users-modal-email-input"
                   required
                 />
               </div>
@@ -263,6 +267,7 @@ const ManageUsers = () => {
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
+                  data-testid="users-modal-password-input"
                   required={!editingUser}
                   minLength={8}
                 />
@@ -277,6 +282,7 @@ const ManageUsers = () => {
                   name="company"
                   value={formData.company}
                   onChange={handleChange}
+                  data-testid="users-modal-company-input"
                   required
                 />
               </div>
@@ -297,10 +303,11 @@ const ManageUsers = () => {
                   type="button"
                   className="btn btn-outline"
                   onClick={() => setShowModal(false)}
+                  data-testid="users-modal-cancel-button"
                 >
                   Cancel
                 </button>
-                <button type="submit" className="btn btn-primary">
+                <button type="submit" className="btn btn-primary" data-testid="users-modal-submit-button">
                   {editingUser ? 'Update User' : 'Create User'}
                 </button>
               </div>

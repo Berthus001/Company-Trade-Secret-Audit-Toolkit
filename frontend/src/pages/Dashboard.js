@@ -81,7 +81,7 @@ const Dashboard = () => {
   if (loading) return <Loading message="Loading dashboard..." />;
 
   return (
-    <div className="dashboard-page">
+    <div className="dashboard-page" data-testid="dashboard">
       <div className="page-header">
         <div className="header-content">
           <h1>Welcome, {user?.name}</h1>
@@ -99,6 +99,7 @@ const Dashboard = () => {
             onClick={() => fetchDashboardData(true)} 
             className="btn btn-secondary"
             disabled={refreshing}
+            data-testid="dashboard-refresh-button"
             style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
           >
             {refreshing ? (
@@ -110,7 +111,7 @@ const Dashboard = () => {
               <>🔄 Refresh</>
             )}
           </button>
-          <Link to="/audit/new" className="btn btn-primary">
+          <Link to="/audit/new" className="btn btn-primary" data-testid="dashboard-new-audit-button">
             + New Audit
           </Link>
         </div>

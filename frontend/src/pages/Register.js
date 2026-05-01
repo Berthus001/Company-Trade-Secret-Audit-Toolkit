@@ -80,9 +80,9 @@ const Register = () => {
           <p>Start protecting your company's trade secrets</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="auth-form">
+        <form onSubmit={handleSubmit} className="auth-form" data-testid="register-form">
           {(formError || error) && (
-            <div className="alert alert-error">
+            <div className="alert alert-error" data-testid="register-error-message">
               {formError || error}
             </div>
           )}
@@ -97,6 +97,7 @@ const Register = () => {
               onChange={handleChange}
               placeholder="John Smith"
               autoComplete="name"
+              data-testid="register-name-input"
               required
             />
           </div>
@@ -111,6 +112,7 @@ const Register = () => {
               onChange={handleChange}
               placeholder="you@company.com"
               autoComplete="email"
+              data-testid="register-email-input"
               required
             />
           </div>
@@ -125,6 +127,7 @@ const Register = () => {
               onChange={handleChange}
               placeholder="Your Company Inc."
               autoComplete="organization"
+              data-testid="register-company-input"
               required
             />
           </div>
@@ -140,6 +143,7 @@ const Register = () => {
                 onChange={handleChange}
                 placeholder="Min. 8 characters"
                 autoComplete="new-password"
+                data-testid="register-password-input"
                 required
               />
             </div>
@@ -154,6 +158,7 @@ const Register = () => {
                 onChange={handleChange}
                 placeholder="Confirm password"
                 autoComplete="new-password"
+                data-testid="register-confirm-password-input"
                 required
               />
             </div>
@@ -163,6 +168,7 @@ const Register = () => {
             type="submit"
             className="btn btn-primary btn-block"
             disabled={isSubmitting}
+            data-testid="register-submit-button"
           >
             {isSubmitting ? 'Creating Account...' : 'Create Account'}
           </button>

@@ -92,10 +92,12 @@ app.use('/api', limiter);
 const authRoutes = require('./routes/authRoutes');
 const questionRoutes = require('./routes/questionRoutes');
 const auditRoutes = require('./routes/auditRoutes');
+const recommendationRoutes = require('./routes/recommendationRoutes');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/questions', questionRoutes);
 app.use('/api/audits', auditRoutes);
+app.use('/api/recommendations', recommendationRoutes);
 
 // Health Check Endpoint
 app.get('/api/health', (req, res) => {

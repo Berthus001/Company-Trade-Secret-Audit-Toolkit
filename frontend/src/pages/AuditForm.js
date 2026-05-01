@@ -162,11 +162,12 @@ const AuditForm = () => {
           onChange={(e) => setCompanyName(e.target.value)}
           placeholder="Enter company name"
           className="company-input"
+          data-testid="audit-company-input"
         />
       </div>
 
       {/* Progress Bar */}
-      <div className="audit-progress">
+      <div className="audit-progress" data-testid="audit-progress-bar">
         <div className="progress-bar">
           <div
             className="progress-fill"
@@ -200,11 +201,11 @@ const AuditForm = () => {
         })}
       </div>
 
-      {error && <div className="alert alert-error">{error}</div>}
+      {error && <div className="alert alert-error" data-testid="audit-error-message">{error}</div>}
 
       {/* Questions */}
       <div className="questions-section">
-        <h2 className="category-title">{CATEGORIES[currentCategory]}</h2>
+        <h2 className="category-title" data-testid="audit-category-title">{CATEGORIES[currentCategory]}</h2>
         
         {currentQuestions.map((question) => (
           <QuestionCard
@@ -222,6 +223,7 @@ const AuditForm = () => {
           className="btn btn-outline"
           onClick={handlePrevious}
           disabled={currentCategory === 0}
+          data-testid="audit-previous-button"
         >
           ← Previous
         </button>
@@ -231,6 +233,7 @@ const AuditForm = () => {
             className="btn btn-primary btn-lg"
             onClick={handleSubmit}
             disabled={submitting || totalProgress.answered < totalProgress.total}
+            data-testid="audit-submit-button"
           >
             {submitting ? 'Submitting...' : 'Submit Audit'}
           </button>
@@ -239,6 +242,7 @@ const AuditForm = () => {
             className="btn btn-primary"
             onClick={handleNext}
             disabled={!canProceed()}
+            data-testid="audit-next-button"
           >
             Next →
           </button>

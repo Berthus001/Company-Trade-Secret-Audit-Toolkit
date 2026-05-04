@@ -8,7 +8,15 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const Navbar = () => {
-  const { user, isAuthenticated, isAdmin, isSuperadmin, logout } = useAuth();
+  const { 
+    user, 
+    isAuthenticated, 
+    isSuperadmin,
+    isAnalyst,
+    canCreateAudits,
+    canManageUsers,
+    logout 
+  } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -30,16 +38,20 @@ const Navbar = () => {
         <div className="navbar-menu">
           {isAuthenticated ? (
             <>
-              {/* Regular users and admins see audit features */}
+              {/* Show Dashboard to all authenticated users */}
               {!isSuperadmin && (
+                <Link
+                  to="/dashboard"
+                  className={`nav-link ${isActive('/dashboard') ? 'active' : ''}`}
+                  data-testid="navbar-dashboard-link"
+                >
+                  Dashboard
+                </Link>
+              )}
+
+              {/* Auditors can create audits */}
+              {canCreateAudits && !isSuperadmin && (
                 <>
-                  <Link
-                    to="/dashboard"
-                    className={`nav-link ${isActive('/dashboard') ? 'active' : ''}`}
-                    data-testid="navbar-dashboard-link"
-                  >
-                    Dashboard
-                  </Link>
                   <Link
                     to="/audit/new"
                     className={`nav-link ${isActive('/audit/new') ? 'active' : ''}`}
@@ -57,8 +69,19 @@ const Navbar = () => {
                 </>
               )}
               
+              {/* Analysts can view audits (limited) */}
+              {isAnalyst && (
+                <Link
+                  to="/audits"
+                  className={`nav-link ${isActive('/audits') ? 'active' : ''}`}
+                  data-testid="navbar-history-link"
+                >
+                  View Audits
+                </Link>
+              )}
+              
               {/* Admin: Show Manage Users */}
-              {isAdmin && !isSuperadmin && (
+              {canManageUsers && !isSuperadmin && (
                 <Link
                   to="/admin/users"
                   className={`nav-link ${isActive('/admin/users') ? 'active' : ''}`}
@@ -91,7 +114,14 @@ const Navbar = () => {
               <div className="nav-divider"></div>
               <span className="nav-user">
                 {user?.name} ({user?.company})
-                {user?.role && <span className="role-badge">{user.role}</span>}
+                {user?.role && (
+                  <span 
+                    className={`role-badge role-${user.role}`}
+                    title={user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                  >
+                    {user.role}
+                  </span>
+                )}
               </span>
               <button 
                 onClick={handleLogout} 

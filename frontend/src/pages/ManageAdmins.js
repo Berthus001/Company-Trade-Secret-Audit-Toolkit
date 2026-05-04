@@ -19,7 +19,8 @@ const ManageAdmins = () => {
     name: '',
     email: '',
     password: '',
-    company: ''
+    company: '',
+    role: 'admin'
   });
   const [formError, setFormError] = useState('');
   const [formSuccess, setFormSuccess] = useState('');
@@ -46,7 +47,7 @@ const ManageAdmins = () => {
 
   const handleCreateClick = () => {
     setEditingAdmin(null);
-    setFormData({ name: '', email: '', password: '', company: '' });
+    setFormData({ name: '', email: '', password: '', company: '', role: 'admin' });
     setFormError('');
     setFormSuccess('');
     setShowModal(true);
@@ -58,7 +59,8 @@ const ManageAdmins = () => {
       name: admin.name,
       email: admin.email,
       password: '',
-      company: admin.company
+      company: admin.company,
+      role: admin.role || 'admin'
     });
     setFormError('');
     setFormSuccess('');
@@ -108,11 +110,18 @@ const ManageAdmins = () => {
           name: formData.name,
           email: formData.email,
           company: formData.company,
-          role: 'admin'
+          role: formData.role
         };
         const updatedAdmin = await api.updateUser(editingAdmin._id, updateData);
-        setAdmins(admins.map(a => a._id === editingAdmin._id ? updatedAdmin : a));
-        setFormSuccess('Admin updated successfully');
+        
+        // If role changed to non-admin, remove from list
+        if (updatedAdmin.role !== 'admin') {
+          setAdmins(admins.filter(a => a._id !== editingAdmin._id));
+          setFormSuccess(`User updated to ${updatedAdmin.role} role and removed from admin list`);
+        } else {
+          setAdmins(admins.map(a => a._id === editingAdmin._id ? updatedAdmin : a));
+          setFormSuccess('Admin updated successfully');
+        }
       } else {
         // Create new admin
         const newAdmin = await api.createAdmin(formData);
@@ -288,14 +297,37 @@ const ManageAdmins = () => {
               </div>
 
               <div className="form-group">
-                <label>Role</label>
-                <input
-                  type="text"
-                  value="admin"
-                  disabled
-                  style={{ backgroundColor: '#f0f0f0', cursor: 'not-allowed' }}
-                />
-                <small>Role is fixed for admin accounts</small>
+                <label htmlFor="role">Role *</label>
+                {editingAdmin ? (
+                  <>
+                    <select
+                      id="role"
+                      name="role"
+                      value={formData.role}
+                      onChange={handleChange}
+                      data-testid="admins-modal-role-select"
+                      required
+                    >
+                      <option value="user">User</option>
+                      <option value="auditor">Auditor</option>
+                      <option value="analyst">Analyst</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                    <small>
+                      Superadmin can reassign admin users to different roles
+                    </small>
+                  </>
+                ) : (
+                  <>
+                    <input
+                      type="text"
+                      value="admin"
+                      disabled
+                      style={{ backgroundColor: '#f0f0f0', cursor: 'not-allowed' }}
+                    />
+                    <small>New accounts are created as admin by default</small>
+                  </>
+                )}
               </div>
 
               <div className="modal-footer">

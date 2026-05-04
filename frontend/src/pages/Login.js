@@ -13,6 +13,7 @@ const Login = () => {
     password: ''
   });
   const [formError, setFormError] = useState('');
+  const [isFrozen, setIsFrozen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { login, isAuthenticated, error, clearError } = useAuth();
@@ -39,6 +40,7 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setFormError('');
+    setIsFrozen(false);
 
     if (!formData.email || !formData.password) {
       setFormError('Please fill in all fields');
@@ -51,6 +53,9 @@ const Login = () => {
 
     if (!result.success) {
       setFormError(result.error);
+      if (result.isFrozen) {
+        setIsFrozen(true);
+      }
     }
   };
 
@@ -64,8 +69,14 @@ const Login = () => {
 
         <form onSubmit={handleSubmit} className="auth-form" data-testid="login-form">
           {(formError || error) && (
-            <div className="alert alert-error" data-testid="login-error-message">
+            <div className={`alert ${isFrozen ? 'alert-warning' : 'alert-error'}`} data-testid="login-error-message">
+              {isFrozen && <strong>⚠️ Account Frozen: </strong>}
               {formError || error}
+              {isFrozen && (
+                <div style={{ marginTop: '0.5rem', fontSize: '0.9rem' }}>
+                  Please contact your administrator for assistance.
+                </div>
+              )}
             </div>
           )}
 

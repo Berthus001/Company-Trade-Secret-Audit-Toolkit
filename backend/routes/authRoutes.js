@@ -16,7 +16,10 @@ const {
   createUser,
   getUsers,
   updateUser,
-  deleteUser
+  deleteUser,
+  freezeUser,
+  unfreezeUser,
+  getUserCount
 } = require('../controllers/authController');
 
 // Public routes
@@ -29,8 +32,13 @@ router.post('/users/create-user', protect, allowRoles('admin', 'superadmin'), cr
 
 // Protected routes - User management (Admin/Superadmin)
 router.get('/users', protect, allowRoles('admin', 'superadmin'), getUsers);
+router.get('/users/count', protect, allowRoles('admin', 'superadmin'), getUserCount);
 router.put('/users/:id', protect, allowRoles('admin', 'superadmin'), updateUser);
 router.delete('/users/:id', protect, allowRoles('admin', 'superadmin'), deleteUser);
+
+// Protected routes - Freeze/Unfreeze (Admin/Superadmin)
+router.put('/users/:id/freeze', protect, allowRoles('admin', 'superadmin'), freezeUser);
+router.put('/users/:id/unfreeze', protect, allowRoles('admin', 'superadmin'), unfreezeUser);
 
 // Protected routes - Profile management
 router.get('/me', protect, getMe);

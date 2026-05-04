@@ -142,6 +142,24 @@ const auditSchema = new mongoose.Schema({
     type: String,
     enum: ['draft', 'completed'],
     default: 'completed'
+  },
+  // Recommendation workflow fields (for analyst role)
+  recommendationStatus: {
+    type: String,
+    enum: ['pending', 'in_progress', 'done'],
+    default: 'pending'
+  },
+  recommendationGenerated: {
+    type: Boolean,
+    default: false
+  },
+  reviewedByAnalyst: {
+    type: Boolean,
+    default: false
+  },
+  reviewedAt: {
+    type: Date,
+    default: null
   }
 }, {
   timestamps: true
@@ -152,6 +170,7 @@ auditSchema.index({ user: 1, createdAt: -1 });
 auditSchema.index({ companyName: 1 });
 auditSchema.index({ riskLevel: 1, createdAt: -1 });
 auditSchema.index({ status: 1 });
+auditSchema.index({ recommendationStatus: 1 });
 
 /**
  * Static method to get user's audit summary

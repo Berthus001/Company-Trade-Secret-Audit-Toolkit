@@ -1533,15 +1533,20 @@ body {
 
 /* Print Styles */
 @media print {
+  /* Hide UI elements */
   .navbar,
   .form-actions,
   .results-actions,
   .back-link,
   .delete-btn,
-  .btn {
+  .btn,
+  .results-header .header-top > div,
+  .results-tabs,
+  button {
     display: none !important;
   }
 
+  /* Show only essential content */
   .main-content {
     padding: 0;
     max-width: none;
@@ -1551,13 +1556,64 @@ body {
     max-width: none;
   }
 
-  .score-banner {
+  /* Preserve colors for risk badges */
+  .score-banner,
+  .risk-badge,
+  .recommendation-item {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
 
+  /* Expand all sections */
   .recommendation-body {
     display: block !important;
+  }
+
+  /* Page breaks */
+  .results-header,
+  .score-banner,
+  .overview-tab,
+  .recommendation-item {
+    page-break-inside: avoid;
+  }
+
+  h2 {
+    page-break-after: avoid;
+  }
+
+  /* Clean layout */
+  body {
+    background: white;
+  }
+
+  /* Hide alerts and workflow badges */
+  .alert,
+  .results-header .header-top > div > span {
+    display: none !important;
+  }
+
+  /* Make content full width */
+  .results-content {
+    max-width: 100%;
+  }
+
+  /* Ensure text is black for readability */
+  body, p, td, li {
+    color: #000 !important;
+  }
+
+  /* Add page footer */
+  @page {
+    margin: 1.5cm;
+  }
+
+  .results-page::after {
+    content: "Page " counter(page);
+    position: fixed;
+    bottom: 1cm;
+    right: 1cm;
+    font-size: 10pt;
+    color: #666;
   }
 }
 
@@ -1666,6 +1722,47 @@ body {
   color: #e65100;
 }
 
+.role-tag.role-auditor {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+.role-tag.role-analyst {
+  background-color: #fce4ec;
+  color: #c2185b;
+}
+
+/* ===================
+   Status Badges
+   =================== */
+.status-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-full);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.status-badge.status-active {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+.status-badge.status-frozen {
+  background-color: #e3f2fd;
+  color: #1565c0;
+}
+
+/* Role badge in navbar */
+.role-badge.role-auditor {
+  background-color: rgba(46, 125, 50, 0.2);
+}
+
+.role-badge.role-analyst {
+  background-color: rgba(194, 24, 91, 0.2);
+}
+
 /* ===================
    Action Buttons
    =================== */
@@ -1700,6 +1797,24 @@ body {
 
 .btn-action.btn-delete:hover {
   background-color: #ffcdd2;
+}
+
+.btn-action.btn-warning {
+  background-color: #fff3e0;
+  color: #e65100;
+}
+
+.btn-action.btn-warning:hover {
+  background-color: #ffe0b2;
+}
+
+.btn-action.btn-success {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+.btn-action.btn-success:hover {
+  background-color: #c8e6c9;
 }
 
 /* ===================

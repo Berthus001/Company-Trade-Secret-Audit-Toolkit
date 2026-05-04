@@ -266,7 +266,7 @@ const createAdmin = asyncHandler(async (req, res) => {
  * @access  Private/Admin/Superadmin
  */
 const createUser = asyncHandler(async (req, res) => {
-  const { name, email, password, company } = req.body;
+  const { name, email, password, company, role } = req.body;
 
   // Validate required fields
   if (!name || !email || !password || !company) {
@@ -293,13 +293,17 @@ const createUser = asyncHandler(async (req, res) => {
     });
   }
 
+  // Validate role - admins can assign auditor, analyst, or user
+  const allowedRoles = ['user', 'auditor', 'analyst'];
+  const userRole = role && allowedRoles.includes(role) ? role : 'user';
+
   // Create regular user (set createdBy to admin or superadmin)
   const user = await User.create({
     name,
     email: email.toLowerCase(),
     password,
     company,
-    role: 'user',
+    role: userRole,
     createdBy: req.user._id // Admin/Superadmin who created this user
   });
 
@@ -378,16 +382,32 @@ const updateUser = asyncHandler(async (req, res) => {
       });
     }
 
-    // Admins cannot change roles
+    // Admins can only assign roles: user, auditor, analyst (not admin or superadmin)
     if (role && role !== user.role) {
-      return res.status(403).json({
-        success: false,
-        error: 'Admins cannot change user roles'
-      });
+      if (!['user', 'auditor', 'analyst'].includes(role)) {
+        return res.status(403).json({
+          success: false,
+          error: 'Admins can only assign user, auditor, or analyst roles'
+        });
+      }
     }
   }
 
-  // Prevent changing superadmin role (unless done by another superadmin)
+  // Superadmin can change any role except superadmin role
+  if (req.user.role === 'superadmin') {
+    // Prevent changing superadmin role to anything else (for safety)
+    if (user.role === 'superadmin' && role && role !== 'superadmin') {
+      return res.status(403).json({
+        success: false,
+        error: 'Cannot demote superadmin accounts'
+      });
+    }
+    
+    // Superadmin can change admin, auditor, analyst, user roles freely
+    // This allows demoting admins to other roles
+  }
+
+  // Prevent non-superadmins from modifying superadmin accounts
   if (user.role === 'superadmin' && req.user.role !== 'superadmin') {
     return res.status(403).json({
       success: false,
@@ -410,7 +430,7 @@ const updateUser = asyncHandler(async (req, res) => {
   // Update fields
   if (name) user.name = name;
   if (company) user.company = company;
-  if (role && ['user', 'admin', 'superadmin'].includes(role)) {
+  if (role && ['user', 'admin', 'superadmin', 'auditor', 'analyst'].includes(role)) {
     user.role = role;
   }
 
@@ -470,6 +490,148 @@ const deleteUser = asyncHandler(async (req, res) => {
   });
 });
 
+/**
+ * @desc    Freeze a user account
+ * @route   PUT /api/auth/users/:id/freeze
+ * @access  Private/Admin/Superadmin
+ * @ownership Admins can only freeze users they created; Superadmins can freeze all
+ */
+const freezeUser = asyncHandler(async (req, res) => {
+  const { reason } = req.body;
+  
+  const user = await User.findById(req.params.id);
+
+  if (!user) {
+    return res.status(404).json({
+      success: false,
+      error: 'User not found'
+    });
+  }
+
+  // Ownership check: Admins can only freeze users they created
+  if (req.user.role === 'admin') {
+    if (!user.createdBy || user.createdBy.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied: You can only freeze users you created'
+      });
+    }
+  }
+
+  // Prevent freezing superadmin or admin accounts
+  if (['superadmin', 'admin'].includes(user.role)) {
+    return res.status(403).json({
+      success: false,
+      error: 'Cannot freeze admin or superadmin accounts'
+    });
+  }
+
+  // Check if already frozen
+  if (user.isFrozen) {
+    return res.status(400).json({
+      success: false,
+      error: 'User is already frozen'
+    });
+  }
+
+  // Freeze the user
+  user.isFrozen = true;
+  user.frozenBy = req.user._id;
+  user.frozenAt = new Date();
+  user.freezeReason = reason || 'No reason provided';
+  await user.save();
+
+  res.status(200).json({
+    success: true,
+    message: 'User account frozen successfully',
+    data: {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      isFrozen: user.isFrozen,
+      frozenAt: user.frozenAt,
+      freezeReason: user.freezeReason
+    }
+  });
+});
+
+/**
+ * @desc    Unfreeze a user account
+ * @route   PUT /api/auth/users/:id/unfreeze
+ * @access  Private/Admin/Superadmin
+ * @ownership Admins can only unfreeze users they created; Superadmins can unfreeze all
+ */
+const unfreezeUser = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.params.id);
+
+  if (!user) {
+    return res.status(404).json({
+      success: false,
+      error: 'User not found'
+    });
+  }
+
+  // Ownership check: Admins can only unfreeze users they created
+  if (req.user.role === 'admin') {
+    if (!user.createdBy || user.createdBy.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied: You can only unfreeze users you created'
+      });
+    }
+  }
+
+  // Check if user is frozen
+  if (!user.isFrozen) {
+    return res.status(400).json({
+      success: false,
+      error: 'User is not frozen'
+    });
+  }
+
+  // Unfreeze the user
+  user.isFrozen = false;
+  user.frozenBy = null;
+  user.frozenAt = null;
+  user.freezeReason = null;
+  await user.save();
+
+  res.status(200).json({
+    success: true,
+    message: 'User account unfrozen successfully',
+    data: {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      isFrozen: user.isFrozen
+    }
+  });
+});
+
+/**
+ * @desc    Get user count (with ownership filtering)
+ * @route   GET /api/auth/users/count
+ * @access  Private/Admin/Superadmin
+ * @ownership Admins only count users they created; Superadmins count all
+ */
+const getUserCount = asyncHandler(async (req, res) => {
+  // Build query based on user role
+  const query = {};
+  
+  // Admins can ONLY count users they created
+  if (req.user.role === 'admin') {
+    query.createdBy = req.user._id;
+  }
+  // Superadmins count all users (no filter)
+
+  const count = await User.countDocuments(query);
+
+  res.status(200).json({
+    success: true,
+    count: count
+  });
+});
+
 module.exports = {
   registerUser,
   loginUser,
@@ -480,5 +642,8 @@ module.exports = {
   createUser,
   getUsers,
   updateUser,
-  deleteUser
+  deleteUser,
+  freezeUser,
+  unfreezeUser,
+  getUserCount
 };

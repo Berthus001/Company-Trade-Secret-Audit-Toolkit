@@ -39,13 +39,31 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['superadmin', 'admin', 'user'],
+    enum: ['superadmin', 'admin', 'auditor', 'analyst', 'user'],
     default: 'user'
   },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     default: null // null for superadmin or self-registered users
+  },
+  // Freeze system for user suspension
+  isFrozen: {
+    type: Boolean,
+    default: false
+  },
+  frozenBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  frozenAt: {
+    type: Date,
+    default: null
+  },
+  freezeReason: {
+    type: String,
+    default: null
   }
 }, {
   timestamps: true // Adds createdAt and updatedAt automatically

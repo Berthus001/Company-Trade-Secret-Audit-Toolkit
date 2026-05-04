@@ -9,7 +9,7 @@ import api from '../services/api';
 import Loading from '../components/Loading';
 
 const ManageUsers = () => {
-  const { isAdmin } = useAuth();
+  const { user, isAdmin, isSuperadmin } = useAuth();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -19,7 +19,8 @@ const ManageUsers = () => {
     name: '',
     email: '',
     password: '',
-    company: ''
+    company: '',
+    role: 'user'
   });
   const [formError, setFormError] = useState('');
   const [formSuccess, setFormSuccess] = useState('');
@@ -32,8 +33,27 @@ const ManageUsers = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await api.getUsers('user');
-      setUsers(response.data || []);
+      // Fetch all users (no role filter) so admins see all users they created regardless of role
+      // Superadmins will see ALL users including admins
+      const response = await api.getUsers();
+      console.log('Fetched users:', response.data);
+      console.log('Total users count:', response.data?.length);
+      
+      // Log role breakdown for debugging
+      const roleBreakdown = response.data?.reduce((acc, u) => {
+        acc[u.role] = (acc[u.role] || 0) + 1;
+        return acc;
+      }, {});
+      console.log('Role breakdown:', roleBreakdown);
+      
+      // Filter to only show user, auditor, and analyst roles (hide admin and superadmin)
+      const allowedRoles = ['user', 'auditor', 'analyst'];
+      const filteredUsers = response.data?.filter(u => 
+        allowedRoles.includes(u.role?.toLowerCase())
+      ) || [];
+      
+      console.log('Filtered users count:', filteredUsers.length);
+      setUsers(filteredUsers);
     } catch (err) {
       const errorMsg = err.response?.data?.error || err.message || 'Failed to load users';
       setError(`Failed to load users: ${errorMsg}`);
@@ -46,7 +66,7 @@ const ManageUsers = () => {
 
   const handleCreateClick = () => {
     setEditingUser(null);
-    setFormData({ name: '', email: '', password: '', company: '' });
+    setFormData({ name: '', email: '', password: '', company: '', role: 'user' });
     setFormError('');
     setFormSuccess('');
     setShowModal(true);
@@ -58,7 +78,8 @@ const ManageUsers = () => {
       name: user.name,
       email: user.email,
       password: '',
-      company: user.company
+      company: user.company,
+      role: user.role || 'user'
     });
     setFormError('');
     setFormSuccess('');
@@ -77,6 +98,37 @@ const ManageUsers = () => {
       setTimeout(() => setFormSuccess(''), 3000);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to delete user');
+    }
+  };
+
+  const handleFreezeClick = async (userId, userName) => {
+    const reason = window.prompt(`Enter reason for freezing ${userName}:`);
+    if (!reason) {
+      return;
+    }
+
+    try {
+      const updatedUser = await api.freezeUser(userId, reason);
+      setUsers(users.map(u => u._id === userId ? { ...u, isFrozen: true, frozenAt: updatedUser.frozenAt } : u));
+      setFormSuccess(`${userName} has been frozen`);
+      setTimeout(() => setFormSuccess(''), 3000);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to freeze user');
+    }
+  };
+
+  const handleUnfreezeClick = async (userId, userName) => {
+    if (!window.confirm(`Are you sure you want to unfreeze ${userName}?`)) {
+      return;
+    }
+
+    try {
+      await api.unfreezeUser(userId);
+      setUsers(users.map(u => u._id === userId ? { ...u, isFrozen: false, frozenAt: null } : u));
+      setFormSuccess(`${userName} has been unfrozen`);
+      setTimeout(() => setFormSuccess(''), 3000);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to unfreeze user');
     }
   };
 
@@ -108,13 +160,13 @@ const ManageUsers = () => {
           name: formData.name,
           email: formData.email,
           company: formData.company,
-          role: 'user'
+          role: formData.role
         };
         const updatedUser = await api.updateUser(editingUser._id, updateData);
         setUsers(users.map(u => u._id === editingUser._id ? updatedUser : u));
         setFormSuccess('User updated successfully');
       } else {
-        // Create new user
+        // Create new user - include role
         const newUser = await api.createUser(formData);
         setUsers([newUser, ...users]);
         setFormSuccess('User created successfully');
@@ -151,13 +203,27 @@ const ManageUsers = () => {
     <div className="manage-page">
       <div className="page-header">
         <div>
-          <h1>👥 Manage Users</h1>
-          <p className="header-subtitle">View and manage regular user accounts</p>
+          <h1>👥 Manage Users {isSuperadmin && <span style={{fontSize: '0.6em', color: '#e65100'}}>(Superadmin Access)</span>}</h1>
+          <p className="header-subtitle">
+            {isSuperadmin ? 'View and manage all user accounts in the system' : 'View and manage user accounts you created'}
+          </p>
         </div>
-        <button className="btn btn-primary" onClick={handleCreateClick} data-testid="users-create-button">
-          + Create New User
-        </button>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button className="btn btn-outline" onClick={fetchUsers} title="Refresh user list">
+            🔄 Refresh
+          </button>
+          <button className="btn btn-primary" onClick={handleCreateClick} data-testid="users-create-button">
+            + Create New User
+          </button>
+        </div>
       </div>
+
+      {isSuperadmin && (
+        <div className="alert" style={{ backgroundColor: '#fff3e0', borderLeft: '4px solid #e65100', marginBottom: '1rem' }}>
+          <strong>Superadmin Mode:</strong> Logged in as <strong>{user?.name}</strong> ({user?.role}). 
+          Showing {users.length} users (user, auditor, analyst only).
+        </div>
+      )}
 
       {error && <div className="alert alert-error">{error}</div>}
       {formSuccess && !showModal && <div className="alert alert-success">{formSuccess}</div>}
@@ -170,13 +236,14 @@ const ManageUsers = () => {
               <th>Email</th>
               <th>Company</th>
               <th>Role</th>
+              <th>Status</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {users.length === 0 ? (
               <tr>
-                <td colSpan="5" style={{ textAlign: 'center', padding: '2rem' }}>
+                <td colSpan="6" style={{ textAlign: 'center', padding: '2rem' }}>
                   No users found. Create your first user!
                 </td>
               </tr>
@@ -187,7 +254,18 @@ const ManageUsers = () => {
                   <td>{user.email}</td>
                   <td>{user.company}</td>
                   <td>
-                    <span className="role-tag role-user">{user.role}</span>
+                    <span className={`role-tag role-${user.role}`}>{user.role}</span>
+                  </td>
+                  <td>
+                    {user.isFrozen ? (
+                      <span className="status-badge status-frozen" title={`Frozen on ${new Date(user.frozenAt).toLocaleDateString()}`}>
+                        ❄️ Frozen
+                      </span>
+                    ) : (
+                      <span className="status-badge status-active">
+                        ✅ Active
+                      </span>
+                    )}
                   </td>
                   <td>
                     <div className="action-buttons">
@@ -199,6 +277,25 @@ const ManageUsers = () => {
                       >
                         ✏️ Edit
                       </button>
+                      {user.isFrozen ? (
+                        <button
+                          className="btn-action btn-success"
+                          onClick={() => handleUnfreezeClick(user._id, user.name)}
+                          title="Unfreeze user"
+                          data-testid={`users-unfreeze-button-${user._id}`}
+                        >
+                          🔓 Unfreeze
+                        </button>
+                      ) : (
+                        <button
+                          className="btn-action btn-warning"
+                          onClick={() => handleFreezeClick(user._id, user.name)}
+                          title="Freeze user"
+                          data-testid={`users-freeze-button-${user._id}`}
+                        >
+                          ❄️ Freeze
+                        </button>
+                      )}
                       <button
                         className="btn-action btn-delete"
                         onClick={() => handleDeleteClick(user._id, user.name)}
@@ -288,14 +385,30 @@ const ManageUsers = () => {
               </div>
 
               <div className="form-group">
-                <label>Role</label>
-                <input
-                  type="text"
-                  value="user"
-                  disabled
-                  style={{ backgroundColor: '#f0f0f0', cursor: 'not-allowed' }}
-                />
-                <small>Role is fixed for regular users</small>
+                <label htmlFor="role">Role *</label>
+                <select
+                  id="role"
+                  name="role"
+                  value={formData.role}
+                  onChange={handleChange}
+                  data-testid="users-modal-role-select"
+                  required
+                >
+                  <option value="user">User</option>
+                  <option value="auditor">Auditor</option>
+                  <option value="analyst">Analyst</option>
+                  {isSuperadmin && <option value="admin">Admin</option>}
+                </select>
+                <small>
+                  • Auditor: Can create and view audits<br />
+                  • Analyst: Can generate recommendations<br />
+                  {isSuperadmin && (
+                    <>
+                      • Admin: Can manage users and assign roles<br />
+                    </>
+                  )}
+                  • User: Standard access
+                </small>
               </div>
 
               <div className="modal-footer">

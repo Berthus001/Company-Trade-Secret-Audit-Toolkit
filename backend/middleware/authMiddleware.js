@@ -41,6 +41,15 @@ const protect = async (req, res, next) => {
         });
       }
 
+      // Check if user is frozen
+      if (user.isFrozen) {
+        return res.status(403).json({
+          success: false,
+          error: 'Account is frozen. Please contact your administrator.',
+          isFrozen: true
+        });
+      }
+
       // Attach user to request object with decoded payload (includes role)
       req.user = {
         id: user._id,
@@ -48,7 +57,8 @@ const protect = async (req, res, next) => {
         email: user.email,
         company: user.company,
         role: decoded.role || user.role,
-        _id: user._id
+        _id: user._id,
+        createdBy: user.createdBy
       };
       next();
 
@@ -197,4 +207,86 @@ const optionalAuth = async (req, res, next) => {
   }
 };
 
-module.exports = { protect, adminOnly, allowRoles, optionalAuth };
+/**
+ * Middleware: Auditor access only
+ * Auditors can create and view audits
+ */
+const auditorOnly = (req, res, next) => {
+  if (req.user && ['auditor', 'admin', 'superadmin'].includes(req.user.role)) {
+    next();
+  } else {
+    return res.status(403).json({
+      success: false,
+      error: 'Access denied: Auditor role required'
+    });
+  }
+};
+
+/**
+ * Middleware: Analyst access only
+ * Analysts can generate recommendations but cannot see full audit answers
+ */
+const analystOnly = (req, res, next) => {
+  if (req.user && ['analyst', 'admin', 'superadmin'].includes(req.user.role)) {
+    next();
+  } else {
+    return res.status(403).json({
+      success: false,
+      error: 'Access denied: Analyst role required'
+    });
+  }
+};
+
+/**
+ * Middleware: Admin and Superadmin only
+ * For user management operations
+ */
+const adminOrSuperadmin = (req, res, next) => {
+  if (req.user && ['admin', 'superadmin'].includes(req.user.role)) {
+    next();
+  } else {
+    return res.status(403).json({
+      success: false,
+      error: 'Access denied: Admin access required'
+    });
+  }
+};
+
+/**
+ * Middleware: Prevent auditors from accessing recommendations
+ */
+const blockAuditorsFromRecommendations = (req, res, next) => {
+  if (req.user && req.user.role === 'auditor') {
+    return res.status(403).json({
+      success: false,
+      error: 'Access denied: Auditors cannot access recommendations'
+    });
+  }
+  next();
+};
+
+/**
+ * Middleware: Prevent analysts from viewing full audit answers
+ */
+const blockAnalystsFromAuditDetails = (req, res, next) => {
+  if (req.user && req.user.role === 'analyst') {
+    return res.status(403).json({
+      success: false,
+      error: 'Access denied: Analysts cannot view detailed audit answers'
+    });
+  }
+  next();
+};
+
+module.exports = { 
+  protect, 
+  adminOnly, 
+  allowRoles, 
+  verifyOwnership,
+  optionalAuth,
+  auditorOnly,
+  analystOnly,
+  adminOrSuperadmin,
+  blockAuditorsFromRecommendations,
+  blockAnalystsFromAuditDetails
+};

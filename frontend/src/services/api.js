@@ -94,6 +94,11 @@ const api = {
     return response.data;
   },
 
+  getUserCount: async () => {
+    const response = await axiosInstance.get('/auth/users/count');
+    return response.data.count;
+  },
+
   updateUser: async (id, userData) => {
     const response = await axiosInstance.put(`/auth/users/${id}`, userData);
     return response.data.data;
@@ -102,6 +107,16 @@ const api = {
   deleteUser: async (id) => {
     const response = await axiosInstance.delete(`/auth/users/${id}`);
     return response.data;
+  },
+
+  freezeUser: async (id, reason) => {
+    const response = await axiosInstance.put(`/auth/users/${id}/freeze`, { reason });
+    return response.data.data;
+  },
+
+  unfreezeUser: async (id) => {
+    const response = await axiosInstance.put(`/auth/users/${id}/unfreeze`);
+    return response.data.data;
   },
 
   // ==================
@@ -152,6 +167,11 @@ const api = {
     return response.data.data;
   },
 
+  getAuditCount: async () => {
+    const response = await axiosInstance.get('/audits/count');
+    return response.data.count;
+  },
+
   // ==================
   // AI Recommendations endpoint
   // ==================
@@ -162,6 +182,20 @@ const api = {
       weakCategories
     });
     return response.data.data;
+  },
+
+  // ==================
+  // Recommendation Workflow (Analyst)
+  // ==================
+  
+  markRecommendationGenerated: async (auditId) => {
+    const response = await axiosInstance.patch(`/audits/${auditId}/recommendation-generated`);
+    return response.data;
+  },
+
+  markAuditAsDone: async (auditId) => {
+    const response = await axiosInstance.patch(`/audits/${auditId}/mark-done`);
+    return response.data;
   }
 };
 

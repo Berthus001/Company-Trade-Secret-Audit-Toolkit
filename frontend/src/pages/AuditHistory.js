@@ -11,7 +11,7 @@ import Loading from '../components/Loading';
 import RiskBadge from '../components/RiskBadge';
 
 const AuditHistory = () => {
-  const { isAdmin, isSuperadmin } = useAuth();
+  const { isAdmin, isSuperadmin, isAnalyst, canCreateAudits } = useAuth();
   const [audits, setAudits] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -31,6 +31,7 @@ const AuditHistory = () => {
       }
       
       // Use appropriate endpoint based on user role
+      // Admins see all, auditors/analysts see their scope
       const response = (isAdmin || isSuperadmin) 
         ? await api.getAudits(params)
         : await api.getMyAudits(params);
@@ -76,15 +77,25 @@ const AuditHistory = () => {
         <div className="header-content">
           <h1>Audit History</h1>
           <p className="header-subtitle">
-            View and manage your previous trade secret audits
+            {isAnalyst 
+              ? 'View audits from your company (Limited View - No detailed answers)' 
+              : 'View and manage your previous trade secret audits'}
           </p>
         </div>
-        <Link to="/audit/new" className="btn btn-primary">
-          + New Audit
-        </Link>
+        {!isAnalyst && (
+          <Link to="/audit/new" className="btn btn-primary">
+            + New Audit
+          </Link>
+        )}
       </div>
 
       {error && <div className="alert alert-error">{error}</div>}
+      
+      {isAnalyst && (
+        <div className="alert alert-info" style={{ backgroundColor: '#fff3cd', borderLeft: '4px solid #ffc107' }}>
+          <strong>👁️ Limited View:</strong> As an analyst, you can view audits from your company but cannot see detailed question answers. You can generate recommendations based on the scores.
+        </div>
+      )}
 
       {/* Filters */}
       <div className="filters-section">
@@ -170,11 +181,15 @@ const AuditHistory = () => {
           <p>
             {filter !== 'all'
               ? `No audits with ${filter} risk level.`
-              : "You haven't completed any audits yet."}
+              : isAnalyst 
+                ? "No audits available from your company yet."
+                : "You haven't completed any audits yet."}
           </p>
-          <Link to="/audit/new" className="btn btn-primary">
-            Start Your First Audit
-          </Link>
+          {canCreateAudits && (
+            <Link to="/audit/new" className="btn btn-primary">
+              Start Your First Audit
+            </Link>
+          )}
         </div>
       )}
     </div>

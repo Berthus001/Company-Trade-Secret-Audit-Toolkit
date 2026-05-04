@@ -5,7 +5,7 @@
 
 const express = require('express');
 const router = express.Router();
-const { protect } = require('../middleware/authMiddleware');
+const { protect, blockAuditorsFromRecommendations } = require('../middleware/authMiddleware');
 const {
   getRecommendations,
   getActionableRecommendations,
@@ -15,8 +15,8 @@ const {
 // Public route for rules documentation
 router.get('/rules', getRecommendationRules);
 
-// Protected routes
-router.post('/', protect, getRecommendations);
-router.post('/actionable', protect, getActionableRecommendations);
+// Protected routes - analysts can access, auditors cannot
+router.post('/', protect, blockAuditorsFromRecommendations, getRecommendations);
+router.post('/actionable', protect, blockAuditorsFromRecommendations, getActionableRecommendations);
 
 module.exports = router;

@@ -5,6 +5,7 @@
 
 const Audit = require('../models/Audit');
 const Question = require('../models/Question');
+const User = require('../models/User');
 const { asyncHandler } = require('../middleware/errorMiddleware');
 const { processAuditScores, formatResponse } = require('../utils/scoringEngine');
 const { generateRecommendations } = require('../utils/recommendationEngine');
@@ -92,13 +93,26 @@ const submitAudit = asyncHandler(async (req, res) => {
 /**
  * @desc    Get all audits for current user
  * @route   GET /api/audits/my
- * @access  Private
+ * @access  Private (Auditors see their own, Analysts see company audits)
  */
 const getMyAudits = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10, riskLevel, startDate, endDate } = req.query;
 
-  // Build query - only current user's audits
-  const query = { user: req.user._id };
+  // Build query based on role
+  let query = {};
+  
+  if (req.user.role === 'analyst') {
+    // Analysts can see all audits from users in their company
+    // First, find all users in the same company
+    const companyUsers = await User.find({ company: req.user.company }).select('_id');
+    const companyUserIds = companyUsers.map(user => user._id);
+    
+    // Query audits by these user IDs
+    query = { user: { $in: companyUserIds } };
+  } else {
+    // Auditors and others see only their own audits
+    query = { user: req.user._id };
+  }
 
   if (riskLevel) {
     query.riskLevel = riskLevel;
@@ -115,12 +129,13 @@ const getMyAudits = asyncHandler(async (req, res) => {
   const totalCount = await Audit.countDocuments(query);
   const totalPages = Math.ceil(totalCount / parseInt(limit));
 
-  // Get audits
+  // Get audits with user population
   const audits = await Audit.find(query)
+    .populate('user', 'name email company')
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(parseInt(limit))
-    .select('companyName auditDate percentageScore riskLevel status createdAt');
+    .select('companyName auditDate percentageScore riskLevel status createdAt user recommendationStatus recommendationGenerated reviewedByAnalyst reviewedAt');
 
   res.status(200).json({
     success: true,
@@ -171,7 +186,7 @@ const getAllAudits = asyncHandler(async (req, res) => {
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(parseInt(limit))
-    .select('companyName auditDate percentageScore riskLevel status createdAt user');
+    .select('companyName auditDate percentageScore riskLevel status createdAt user recommendationStatus recommendationGenerated reviewedByAnalyst reviewedAt');
 
   res.status(200).json({
     success: true,
@@ -189,7 +204,7 @@ const getAllAudits = asyncHandler(async (req, res) => {
 /**
  * @desc    Get single audit by ID
  * @route   GET /api/audits/:id
- * @access  Private (Owner or Admin)
+ * @access  Private (Owner, Admin, or Analyst from same company)
  */
 const getAudit = asyncHandler(async (req, res) => {
   const audit = await Audit.findById(req.params.id)
@@ -202,14 +217,52 @@ const getAudit = asyncHandler(async (req, res) => {
     });
   }
 
-  // Check ownership OR admin role
+  // Check ownership OR admin role OR analyst from same company
   const isOwner = audit.user._id.toString() === req.user._id.toString();
   const isAdmin = req.user.role === 'admin' || req.user.role === 'superadmin';
+  const isAnalystSameCompany = req.user.role === 'analyst' && audit.user.company === req.user.company;
 
-  if (!isOwner && !isAdmin) {
+  if (!isOwner && !isAdmin && !isAnalystSameCompany) {
     return res.status(403).json({
       success: false,
       error: 'Not authorized to access this audit'
+    });
+  }
+
+  // For analysts, return LIMITED VIEW - hide detailed question responses
+  if (req.user.role === 'analyst') {
+    // Auto-update status to in_progress when analyst opens it (if still pending)
+    if (audit.recommendationStatus === 'pending') {
+      audit.recommendationStatus = 'in_progress';
+      await audit.save();
+    }
+
+    const limitedAudit = {
+      _id: audit._id,
+      companyName: audit.companyName,
+      auditDate: audit.auditDate,
+      categoryScores: audit.categoryScores,
+      totalScore: audit.totalScore,
+      maxPossibleScore: audit.maxPossibleScore,
+      percentageScore: audit.percentageScore,
+      riskLevel: audit.riskLevel,
+      recommendations: audit.recommendations,
+      notes: audit.notes,
+      status: audit.status,
+      createdAt: audit.createdAt,
+      user: audit.user,
+      // Recommendation workflow fields
+      recommendationStatus: audit.recommendationStatus,
+      recommendationGenerated: audit.recommendationGenerated,
+      reviewedByAnalyst: audit.reviewedByAnalyst,
+      reviewedAt: audit.reviewedAt,
+      // responses field is intentionally excluded
+      limitedView: true // Flag to indicate this is limited view
+    };
+    
+    return res.status(200).json({
+      success: true,
+      data: limitedAudit
     });
   }
 
@@ -257,12 +310,42 @@ const deleteAudit = asyncHandler(async (req, res) => {
  * @desc    Get user's audit summary/statistics
  * @route   GET /api/audits/summary
  * @access  Private
+ * @returns All audits for admins/superadmins, only user's audits for others
  */
 const getAuditSummary = asyncHandler(async (req, res) => {
-  const summary = await Audit.getUserSummary(req.user._id);
+  // Admins and superadmins see ALL audits, others see only their own
+  const isAdmin = ['admin', 'superadmin'].includes(req.user.role);
+  const query = isAdmin ? {} : { user: req.user._id };
+
+  // Get audits based on role
+  const audits = await Audit.find(query);
+  
+  // Calculate summary statistics
+  let summary;
+  if (audits.length === 0) {
+    summary = {
+      totalAudits: 0,
+      averageScore: 0,
+      riskDistribution: { Low: 0, Medium: 0, High: 0 }
+    };
+  } else {
+    const totalAudits = audits.length;
+    const averageScore = audits.reduce((sum, a) => sum + a.percentageScore, 0) / totalAudits;
+    
+    const riskDistribution = audits.reduce((dist, a) => {
+      dist[a.riskLevel] = (dist[a.riskLevel] || 0) + 1;
+      return dist;
+    }, { Low: 0, Medium: 0, High: 0 });
+
+    summary = {
+      totalAudits,
+      averageScore: Math.round(averageScore * 10) / 10,
+      riskDistribution
+    };
+  }
 
   // Get recent audits
-  const recentAudits = await Audit.find({ user: req.user._id })
+  const recentAudits = await Audit.find(query)
     .sort({ createdAt: -1 })
     .limit(5)
     .select('companyName auditDate percentageScore riskLevel');
@@ -448,6 +531,119 @@ Generate recommendations NOW:`;
   });
 };
 
+/**
+ * @desc    Get audit count (with ownership filtering)
+ * @route   GET /api/audits/count
+ * @access  Private (Auditor/Admin/Superadmin)
+ * @ownership Regular users and auditors only count their own audits; Admins/Superadmins count all
+ */
+const getAuditCount = asyncHandler(async (req, res) => {
+  // Build query based on user role
+  let query = {};
+  
+  if (req.user.role === 'analyst') {
+    // Analysts count all audits from users in their company
+    const companyUsers = await User.find({ company: req.user.company }).select('_id');
+    const companyUserIds = companyUsers.map(user => user._id);
+    query.user = { $in: companyUserIds };
+  } else if (!['admin', 'superadmin'].includes(req.user.role)) {
+    // Regular users and auditors can only count their own audits
+    query.user = req.user._id;
+  }
+  // Admins and superadmins count all audits (no filter)
+
+  const count = await Audit.countDocuments(query);
+
+  res.status(200).json({
+    success: true,
+    count: count
+  });
+});
+
+/**
+ * @desc    Mark audit recommendation as generated (analyst workflow)
+ * @route   PATCH /api/audits/:id/recommendation-generated
+ * @access  Private (Analyst only)
+ */
+const markRecommendationGenerated = asyncHandler(async (req, res) => {
+  const audit = await Audit.findById(req.params.id).populate('user', 'company');
+
+  if (!audit) {
+    return res.status(404).json({
+      success: false,
+      error: 'Audit not found'
+    });
+  }
+
+  // Only analysts from the same company can mark recommendations
+  if (req.user.role !== 'analyst' || audit.user.company !== req.user.company) {
+    return res.status(403).json({
+      success: false,
+      error: 'Not authorized to update this audit'
+    });
+  }
+
+  // Update recommendation generated flag
+  audit.recommendationGenerated = true;
+  await audit.save();
+
+  res.status(200).json({
+    success: true,
+    message: 'Recommendation marked as generated',
+    data: {
+      recommendationGenerated: audit.recommendationGenerated
+    }
+  });
+});
+
+/**
+ * @desc    Mark audit as done (analyst workflow)
+ * @route   PATCH /api/audits/:id/mark-done
+ * @access  Private (Analyst only)
+ */
+const markAuditAsDone = asyncHandler(async (req, res) => {
+  const audit = await Audit.findById(req.params.id).populate('user', 'company');
+
+  if (!audit) {
+    return res.status(404).json({
+      success: false,
+      error: 'Audit not found'
+    });
+  }
+
+  // Only analysts from the same company can mark as done
+  if (req.user.role !== 'analyst' || audit.user.company !== req.user.company) {
+    return res.status(403).json({
+      success: false,
+      error: 'Not authorized to update this audit'
+    });
+  }
+
+  // Check if recommendation has been generated
+  if (!audit.recommendationGenerated) {
+    return res.status(400).json({
+      success: false,
+      error: 'Cannot mark as done. Please generate recommendations first.'
+    });
+  }
+
+  // Update audit status to done
+  audit.recommendationStatus = 'done';
+  audit.reviewedByAnalyst = true;
+  audit.reviewedAt = new Date();
+  await audit.save();
+
+  res.status(200).json({
+    success: true,
+    message: 'Audit marked as done',
+    data: {
+      recommendationStatus: audit.recommendationStatus,
+      reviewedByAnalyst: audit.reviewedByAnalyst,
+      reviewedAt: audit.reviewedAt
+    }
+  });
+});
+
 module.exports = {
   submitAudit,
   getMyAudits,
@@ -456,5 +652,8 @@ module.exports = {
   deleteAudit,
   getAuditSummary,
   compareAudits,
-  generateAIRecommendations
+  generateAIRecommendations,
+  getAuditCount,
+  markRecommendationGenerated,
+  markAuditAsDone
 };
